@@ -209,6 +209,13 @@ test("a revoked refresh token signs you out; non-expiring tokens are left alone"
   assert.equal(plain.headers.get("set-cookie"), null);
 });
 
+test("docs page", async () => {
+  const res = await call("/docs");
+  assert.equal(res.status, 200);
+  assert.match(res.data, /How to use skylls/);
+  assert.match(res.data, /id="reference"/);
+});
+
 test("privacy and terms pages", async () => {
   assert.match((await call("/privacy")).data, /has no database and doesn't store your data/);
   assert.match((await call("/terms")).data, /Apache License 2\.0/);

@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docs — skylls</title>
+  <meta name="description" content="How to use skylls: install, set up, publish, share and install skills, agents and swarms for Claude Code, Codex and Gemini, and the dashboard.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='6' fill='%238b5cf6' fill-opacity='.2'/%3E%3Crect x='7' y='7' width='14' height='3.5' rx='1.75' fill='%23a78bfa'/%3E%3Crect x='7' y='12.25' width='14' height='3.5' rx='1.75' fill='%2322d3ee'/%3E%3Crect x='7' y='17.5' width='9' height='3.5' rx='1.75' fill='%23a78bfa'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: #131316;
+      --surface-hover: #1a1a1f;
+      --border: #27272a;
+      --border-subtle: #1e1e22;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+      --text-dim: #71717a;
+      --accent: #a78bfa;
+      --accent-strong: #8b5cf6;
+      --cyan: #22d3ee;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --radius: 12px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; -webkit-font-smoothing: antialiased;
+    }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+
+    /* Nav */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      background: rgba(9, 9, 11, 0.8); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto; padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; font-size: 1.1rem; color: var(--text); text-decoration: none;
+    }
+    .nav-brand svg { width: 28px; height: 28px; }
+    .nav-links { display: flex; align-items: center; gap: 28px; }
+    .nav-links a {
+      color: var(--text-muted); text-decoration: none; font-size: 0.875rem;
+      font-weight: 500; transition: color 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+    .nav-cta {
+      background: var(--accent-strong) !important; color: #fff !important;
+      padding: 8px 18px; border-radius: 8px; font-weight: 600 !important;
+    }
+    .nav-cta:hover { background: var(--accent) !important; color: #000 !important; }
+
+    /* Layout */
+    .layout {
+      max-width: 1200px; margin: 0 auto; padding: 112px 24px 80px;
+      display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px;
+    }
+    .toc { position: sticky; top: 112px; align-self: start; max-height: calc(100vh - 120px); overflow-y: auto; }
+    .toc p {
+      font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-dim); margin: 20px 0 8px;
+    }
+    .toc p:first-child { margin-top: 0; }
+    .toc a {
+      display: block; padding: 5px 10px; margin-left: -10px; border-radius: 6px;
+      color: var(--text-muted); text-decoration: none; font-size: 0.85rem;
+    }
+    .toc a:hover { color: var(--text); background: var(--surface); }
+    .toc a.active { color: var(--accent); background: rgba(139, 92, 246, 0.1); }
+
+    /* Content */
+    main { max-width: 780px; min-width: 0; line-height: 1.7; }
+    .eyebrow {
+      font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--accent); margin-bottom: 10px;
+    }
+    h1 { font-size: clamp(2rem, 4.5vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 14px; }
+    .lead { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 8px; }
+    main section { padding-top: 48px; }
+    h2 {
+      font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 14px;
+      padding-top: 24px; border-top: 1px solid var(--border-subtle);
+    }
+    h3 { font-size: 1.05rem; font-weight: 600; margin: 28px 0 8px; }
+    h2 a, h3 a { color: inherit; text-decoration: none; }
+    p, li { color: var(--text-muted); font-size: 0.97rem; }
+    p { margin-bottom: 14px; }
+    ul, ol { margin: 0 0 14px 22px; }
+    li { margin-bottom: 6px; }
+    li::marker { color: var(--text-dim); }
+    strong { color: var(--text); font-weight: 600; }
+    a { color: var(--accent); }
+    :not(pre) > code {
+      color: #c4b5fd; font-size: 0.85em; background: var(--surface);
+      border: 1px solid var(--border-subtle); border-radius: 5px; padding: 1px 6px;
+    }
+    pre {
+      position: relative; background: var(--surface); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius); padding: 18px 20px; margin: 0 0 18px;
+      font-size: 0.8rem; line-height: 1.75; color: var(--text); overflow-x: auto;
+    }
+    pre .cm { color: var(--text-dim); }
+    pre .op { color: var(--amber); }
+    pre .ok { color: var(--green); }
+    .copy {
+      position: absolute; top: 10px; right: 10px;
+      background: var(--surface-hover); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text-dim); padding: 4px 10px; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 500;
+      opacity: 0; transition: opacity 0.2s, color 0.2s;
+    }
+    pre:hover .copy, .copy:focus { opacity: 1; }
+    .copy:hover { color: var(--text); }
+
+    table { width: 100%; border-collapse: collapse; margin: 0 0 18px; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
+    th { color: var(--text); font-weight: 600; background: var(--surface); }
+    td { color: var(--text-muted); }
+    td code { white-space: nowrap; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius); margin-bottom: 18px; }
+    .table-wrap table { margin: 0; }
+    .table-wrap tr:last-child td { border-bottom: none; }
+
+    .note {
+      border: 1px solid var(--border-subtle); border-left: 3px solid var(--accent-strong);
+      background: var(--surface); border-radius: 8px; padding: 14px 18px; margin: 0 0 18px;
+    }
+    .note.tip { border-left-color: var(--green); }
+    .note.warn { border-left-color: var(--amber); }
+    .note p:last-child { margin-bottom: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 22px 0 8px; }
+    .cards a {
+      display: block; background: var(--surface); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius); padding: 18px; text-decoration: none; transition: all 0.2s;
+    }
+    .cards a:hover { border-color: var(--border); background: var(--surface-hover); transform: translateY(-2px); }
+    .cards strong { display: block; margin-bottom: 4px; font-size: 0.92rem; }
+    .cards span { color: var(--text-dim); font-size: 0.82rem; line-height: 1.5; }
+
+    footer {
+      max-width: 1200px; margin: 0 auto; padding: 24px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+    }
+    footer span, footer a { font-size: 0.8rem; color: var(--text-dim); text-decoration: none; }
+    footer a:hover { color: var(--text-muted); }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+      :not(pre) > code { overflow-wrap: anywhere; }
+      .toc { display: none; }
+    }
+    @media (max-width: 640px) {
+      .nav-links a:not(.nav-cta) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">
+        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="28" height="28" rx="6" fill="#8b5cf6" fill-opacity="0.2"/>
+          <rect x="7" y="7" width="14" height="3.5" rx="1.75" fill="#a78bfa"/>
+          <rect x="7" y="12.25" width="14" height="3.5" rx="1.75" fill="#22d3ee"/>
+          <rect x="7" y="17.5" width="9" height="3.5" rx="1.75" fill="#a78bfa"/>
+        </svg>
+        skylls
+      </a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/docs" class="active">Docs</a>
+        <a href="https://github.com/jcsancho/skylls" target="_blank" rel="noopener">GitHub</a>
+        <a href="/dashboard" class="nav-cta">Dashboard</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="layout">
+    <aside class="toc" aria-label="On this page">
+      <p>Getting started</p>
+      <a href="#overview">Overview</a>
+      <a href="#install">Install</a>
+      <a href="#setup">Setup</a>
+      <a href="#quick-start">Quick start</a>
+      <p>Skills</p>
+      <a href="#find-install">Find and install</a>
+      <a href="#publish">Publish</a>
+      <a href="#versions">Versions and updates</a>
+      <p>Agents and swarms</p>
+      <a href="#agents-swarms">Agents and swarms</a>
+      <a href="#memory">Obsidian memory</a>
+      <p>Working with friends</p>
+      <a href="#sharing">Sharing</a>
+      <a href="#friends">Seeing friends' items</a>
+      <a href="#suggestions">Suggestions</a>
+      <a href="#folders">Folders</a>
+      <p>More</p>
+      <a href="#dashboard">The dashboard</a>
+      <a href="#security">Security and privacy</a>
+      <a href="#for-agents">For AI agents</a>
+      <a href="#public">Public skills</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#reference">Command reference</a>
+      <a href="#faq">FAQ</a>
+    </aside>
+
+    <main>
+      <p class="eyebrow">Documentation</p>
+      <h1>How to use skylls</h1>
+      <p class="lead">Publish your Claude Code, Codex and Gemini skills, agents and swarms to private GitHub repos, share each one with the friends you choose, and install what they share with you.</p>
+
+      <div class="cards">
+        <a href="#install"><strong>Install</strong><span>One command with npm or the installer script.</span></a>
+        <a href="#quick-start"><strong>Quick start</strong><span>Publish, share and install in four commands.</span></a>
+        <a href="#reference"><strong>Command reference</strong><span>Every command and flag on one table.</span></a>
+      </div>
+
+      <!-- Overview -->
+      <section id="overview">
+        <h2><a href="#overview">Overview</a></h2>
+        <p>skylls is a command-line tool that sits on top of GitHub. It works with three kinds of <strong>items</strong>:</p>
+        <ul>
+          <li><strong>Skills</strong>: folders with a <code>SKILL.md</code> that teach an agent CLI a capability (Claude Code, Codex, Gemini CLI).</li>
+          <li><strong>Agents</strong>: a long-lived agent's folder (<code>CLAUDE.md</code>/<code>AGENTS.md</code>, <code>.claude/</code>, scripts), with its Obsidian memory.</li>
+          <li><strong>Swarms</strong>: a team of agents working together, with their roles and memory.</li>
+        </ul>
+        <p>Every item you publish gets <strong>its own private GitHub repo</strong>. GitHub stores everything and decides who can see what. skylls adds versions, changelogs, plain one-sentence summaries, folders, suggestions and a secret scan on top.</p>
+        <div class="note">
+          <p><strong>Nothing is shared by default.</strong> A friend you share one skill with sees that one repo only, not your other skills, agents or swarms.</p>
+        </div>
+      </section>
+
+      <!-- Install -->
+      <section id="install">
+        <h2><a href="#install">Install</a></h2>
+        <h3>With npm</h3>
+        <p>Needs Node 18+ and Python 3.11+ (the npm package runs the Python tool).</p>
+<pre><code>npm install -g @jcsancho/skylls
+skylls setup</code></pre>
+        <p>To try it without installing: <code>npx @jcsancho/skylls --version</code>.</p>
+
+        <h3>With the installer (macOS / Linux)</h3>
+<pre><code>bash -c "$(curl -fsSL https://raw.githubusercontent.com/jcsancho/skylls/main/install.sh)"</code></pre>
+        <p>The installer:</p>
+        <ol>
+          <li>Checks <code>git</code>, <code>uv</code>, <code>gh</code> and <code>gitleaks</code>, and offers to install missing ones with Homebrew.</li>
+          <li>Installs skylls and puts it on your PATH.</li>
+          <li>Logs you in to GitHub.</li>
+          <li>Runs <code>skylls setup</code>.</li>
+        </ol>
+        <p>Options go after the command: <code>-y</code> answers yes to everything, <code>--no-setup</code> only installs, <code>--ref v1.0.0</code> installs a specific version. Example: <code>bash -c "$(curl …)" _ -y</code>.</p>
+
+        <h3>By hand</h3>
+<pre><code>uv tool install git+https://github.com/jcsancho/skylls   <span class="cm"># or: pipx install git+https://github.com/jcsancho/skylls</span>
+skylls setup</code></pre>
+
+        <h3>Requirements</h3>
+        <ul>
+          <li><strong>Required:</strong> Python 3.11+, <code>git</code>, and the GitHub CLI <code>gh</code>, logged in (<code>gh auth login</code>).</li>
+          <li><strong>For publishing:</strong> <a href="https://github.com/gitleaks/gitleaks" target="_blank" rel="noopener">gitleaks</a> (<code>brew install gitleaks</code>).</li>
+          <li><strong>Optional:</strong> the <code>claude</code> CLI, which writes the plain summaries for you.</li>
+        </ul>
+
+        <h3>Updating</h3>
+<pre><code>npm update -g @jcsancho/skylls     <span class="cm"># if you installed with npm</span>
+uv tool upgrade skylls             <span class="cm"># if you used the installer or uv</span>
+skylls --version                   <span class="cm"># check your version</span></code></pre>
+      </section>
+
+      <!-- Setup -->
+      <section id="setup">
+        <h2><a href="#setup">Setup</a></h2>
+        <p><code>skylls setup</code> runs once (any command starts it the first time) and asks four things:</p>
+        <ol>
+          <li>
+            <strong>Where to publish.</strong> We recommend a GitHub <strong>organization</strong> you administer. It works like a folder holding one private repo per item, keeps them apart from your other repos, and lets friends have <strong>read-only</strong> access.
+<pre><code>github.com/you-skylls          <span class="cm">← your organization</span>
+├── skill-pdf                  <span class="cm">← one private repo per skill</span>
+├── agent-btc                  <span class="cm">← one per agent (definition + memory)</span>
+└── swarm-apps_ideas           <span class="cm">← one per swarm</span></code></pre>
+            If you don't have one, setup shows how to create it (free, about a minute, at <a href="https://github.com/account/organizations/new?plan=free" target="_blank" rel="noopener">github.com/account/organizations/new</a>), can open the page and waits until it exists. It also offers to set the organization's base permission to <em>No permission</em>, so members see nothing by default. Type <code>account</code> to use your personal account instead; repos are then named <code>skylls-skill-pdf</code> and so on.
+          </li>
+          <li><strong>Your agent CLIs:</strong> <code>claude</code>, <code>codex</code>, <code>gemini</code> or <code>all</code>.</li>
+          <li><strong>Your folders</strong> for agents and swarms (default <code>~/agents</code> and <code>~/swarms</code>).</li>
+          <li><strong>The skylls skill:</strong> installs it globally so your agents can use skylls themselves (see <a href="#for-agents">For AI agents</a>).</li>
+        </ol>
+        <p>Without questions:</p>
+<pre><code>skylls setup --owner you-skylls --agents all --agents-dir ~/agents --swarms-dir ~/swarms</code></pre>
+        <p>Your settings live in <code>~/.config/skylls/config.json</code>. Run <code>skylls setup</code> again to change them.</p>
+      </section>
+
+      <!-- Quick start -->
+      <section id="quick-start">
+        <h2><a href="#quick-start">Quick start</a></h2>
+        <p>You publish a skill and share it with Bob:</p>
+<pre><code><span class="op">$</span> skylls push pdf -m "First version"   <span class="cm"># ~/.claude/skills/pdf → you-skylls/skill-pdf (private)</span>
+<span class="op">$</span> skylls share pdf @bob                <span class="cm"># Bob may install it</span></code></pre>
+        <p>Bob installs it:</p>
+<pre><code><span class="op">$</span> skylls source add you-skylls        <span class="cm"># once: accepts your shares, shows what you shared</span>
+<span class="op">$</span> skylls add pdf -g -a all            <span class="cm"># installs it for Claude Code, Codex and Gemini</span></code></pre>
+        <p>When you publish a new version, Bob gets it with <code>skylls pull --update</code>.</p>
+      </section>
+
+      <!-- Find and install -->
+      <section id="find-install">
+        <h2><a href="#find-install">Find and install skills</a></h2>
+<pre><code>skylls list                    <span class="cm"># your skills and what friends shared, grouped by folder</span>
+skylls find invoice            <span class="cm"># search names, folders, summaries and SKILL.md text</span>
+skylls find --folder docs      <span class="cm"># one folder</span>
+skylls add pdf                 <span class="cm"># install into this project</span>
+skylls add pdf -g -a all       <span class="cm"># install globally for every agent CLI</span>
+skylls add pdf --from alice    <span class="cm"># when several people have a "pdf"</span>
+skylls add pdf@1.2.0           <span class="cm"># a specific (older) version</span>
+skylls log pdf                 <span class="cm"># who made it, every version, what changed</span>
+skylls remove pdf              <span class="cm"># remove your local copy (never touches GitHub)</span></code></pre>
+
+        <h3>Where skills go</h3>
+        <div class="table-wrap">
+          <table>
+            <tr><th></th><th>Claude Code</th><th>Codex</th><th>Gemini</th></tr>
+            <tr><td><code>skylls add pdf</code> (this project)</td><td><code>./.claude/skills/pdf/</code></td><td><code>./.agents/skills/pdf/</code></td><td><code>./.gemini/skills/pdf/</code></td></tr>
+            <tr><td><code>skylls add pdf -g</code> (global)</td><td><code>~/.claude/skills/pdf/</code></td><td><code>~/.agents/skills/pdf/</code></td><td><code>~/.gemini/skills/pdf/</code></td></tr>
+          </table>
+        </div>
+        <p><code>-a</code> picks the agent CLIs (<code>claude</code>, <code>codex</code>, <code>gemini</code>, <code>all</code>); without it, skylls uses the ones you chose at setup. A global install for several CLIs keeps one real copy (Claude's) and links the others to it.</p>
+      </section>
+
+      <!-- Publish -->
+      <section id="publish">
+        <h2><a href="#publish">Publish</a></h2>
+<pre><code>skylls push pdf -m "Handles scans"        <span class="cm"># 1.2.0 → 1.2.1 (default: patch)</span>
+skylls push pdf -m "New option" --minor   <span class="cm"># 1.2.1 → 1.3.0</span>
+skylls push pdf -m "Rewrite" --major      <span class="cm"># 1.3.0 → 2.0.0</span>
+skylls push pdf --folder docs             <span class="cm"># also put it in a folder</span>
+skylls push ./path/to/skill               <span class="cm"># or publish a folder by path</span></code></pre>
+        <p>What happens on <code>push</code>:</p>
+        <ul>
+          <li><strong>The repo:</strong> the first push creates the private repo <code>&lt;org&gt;/skill-&lt;name&gt;</code> (<code>&lt;you&gt;/skylls-skill-&lt;name&gt;</code> on a personal account). Each version is a git tag such as <code>v1.3.0</code>. Without <code>-m</code>, push asks what changed.</li>
+          <li><strong>Secret scan:</strong> before anything leaves your machine, push scans for API keys, tokens, passwords, private keys and personal data (emails, phone numbers…) with gitleaks. If it finds any, <strong>nothing is published</strong>. Use <code>--skip-scan</code> only for false positives.</li>
+          <li><strong>Changelog:</strong> skylls writes a <code>CHANGELOG.md</code> in each repo (don't edit it by hand). It holds a plain one-sentence summary (written by Claude, or yours with <code>--about "…"</code>), who created the item, and one entry per version: what changed, when and by whom. The summary is also the repo's description on GitHub.</li>
+        </ul>
+        <div class="note tip">
+          <p>Add <code>--dry-run</code> before any command to see what it would do without changing anything: <code>skylls --dry-run push pdf</code>.</p>
+        </div>
+      </section>
+
+      <!-- Versions -->
+      <section id="versions">
+        <h2><a href="#versions">Versions and updates</a></h2>
+<pre><code>skylls installed               <span class="cm"># installed skills; flags the ones with a newer version</span>
+skylls pull                    <span class="cm"># check for newer versions</span>
+skylls pull --update           <span class="cm"># install them</span>
+skylls add pdf@1.0.0           <span class="cm"># go back to an older version</span></code></pre>
+        <p>Every version stays installable, so you can always go back.</p>
+      </section>
+
+      <!-- Agents and swarms -->
+      <section id="agents-swarms">
+        <h2><a href="#agents-swarms">Agents and swarms</a></h2>
+        <p>Agents and swarms use the same commands, under <code>skylls agents …</code> and <code>skylls swarms …</code>:</p>
+<pre><code>skylls agents                                   <span class="cm"># yours (published or not) and friends'</span>
+skylls agents push btc -m "Adds ETH"            <span class="cm"># ~/agents/btc → &lt;org&gt;/agent-btc</span>
+skylls agents share btc @bob
+skylls agents add btc --from alice              <span class="cm"># → ~/agents/btc</span>
+skylls agents add btc@1.0.0 --from alice --as btc-old
+skylls agents remove btc                        <span class="cm"># local folder → the Trash (repos untouched)</span>
+skylls swarms push apps_ideas                   <span class="cm"># ~/swarms/apps_ideas → &lt;org&gt;/swarm-apps_ideas</span></code></pre>
+
+        <h3>What gets published</h3>
+        <p>Only the <strong>definition</strong>, never runtime state:</p>
+        <div class="table-wrap">
+          <table>
+            <tr><th></th><th>Published</th><th>Not published</th></tr>
+            <tr><td><strong>Agent</strong></td><td><code>CLAUDE.md</code>/<code>AGENTS.md</code>/<code>GEMINI.md</code>, <code>.claude/</code> (settings, skills, commands), scripts and other files, its memory folder</td><td><code>logs/</code>, <code>data/</code>, <code>reports/</code>, <code>scratch/</code>, <code>state/</code>, caches and venvs, <code>*.log</code>, <code>*.jsonl</code>, databases, <code>.claude/settings.local.json</code>, env files, keys, files over 5 MB</td></tr>
+            <tr><td><strong>Swarm</strong></td><td>top-level and per-role instruction files and <code>.claude/</code>, <code>.swarm/agents.json</code>, <code>.swarm/schedules.json</code>, its memory folder</td><td>the roles' work files, reports, <code>.swarm/bus.jsonl</code> and other state</td></tr>
+          </table>
+        </div>
+        <p>To adjust this, put a <code>.skyllsignore</code> file in the folder: one pattern per line, <code>!pattern</code> to include something.</p>
+
+        <h3>Installing a friend's agent or swarm</h3>
+        <ul>
+          <li>It goes into your agents or swarms folder (for example <code>~/agents/btc/</code>).</li>
+          <li>Absolute paths from their machine are rewritten to yours, and missing ones are listed.</li>
+          <li>Running <code>add</code> again updates the definition. Your runtime data stays, and so does your memory unless you pass <code>--update-memory</code>.</li>
+          <li>Where it came from is recorded in its <code>CHANGELOG.md</code>.</li>
+        </ul>
+      </section>
+
+      <!-- Memory -->
+      <section id="memory">
+        <h2><a href="#memory">Obsidian memory</a></h2>
+        <p>An agent's or swarm's memory travels with it.</p>
+        <ul>
+          <li><strong>Best place:</strong> inside the item's folder, for example <code>~/agents/btc/wiki/</code>. A subfolder counts as memory if it's an Obsidian vault (has <code>.obsidian/</code>) or is named <code>memory</code>, <code>wiki</code>, <code>obsidian</code> or <code>*-wiki</code>. All of it is published, except Obsidian's per-user window layout, the trash and files over 5 MB.</li>
+          <li><strong>Memory elsewhere in <code>~/Obsidian</code></strong> also works: skylls finds a <code>&lt;x&gt;-wiki</code> vault the instructions mention, or <code>&lt;vault&gt;/AGENTS/&lt;name&gt;/</code>. It's snapshotted into <code>.skylls-memory/</code> and restored to the same place under your friend's home.</li>
+          <li><strong>Listing it yourself:</strong> a <code>.skyllsmemory</code> file in the item's folder lists memory folders.</li>
+        </ul>
+      </section>
+
+      <!-- Sharing -->
+      <section id="sharing">
+        <h2><a href="#sharing">Sharing</a></h2>
+<pre><code>skylls share pdf @bob @carol   <span class="cm"># invite to one item</span>
+skylls share --all @bob        <span class="cm"># every skill you published</span>
+skylls share pdf               <span class="cm"># who has access</span>
+skylls unshare pdf @bob        <span class="cm"># revoke (what Bob installed stays on his machine)</span>
+skylls agents share --all @bob <span class="cm"># every agent (swarms: skylls swarms share …)</span></code></pre>
+        <ul>
+          <li><strong>Who sees what:</strong> friends see <strong>only the items you shared with them</strong>, and GitHub enforces it. skylls invites them to single repos as <em>outside collaborators</em>, who can't see your other repos, even in the same organization.</li>
+          <li><strong>Access level:</strong> with an organization, friends get <strong>read-only</strong> access. On a personal account, GitHub gives everyone you invite write access to that repo; skylls never pushes to friends' repos, but plain git could.</li>
+        </ul>
+        <div class="note warn">
+          <p>Don't make friends <em>members</em> of your organization. Members get the organization's base permission on every repo. Share item by item instead.</p>
+        </div>
+      </section>
+
+      <!-- Friends -->
+      <section id="friends">
+        <h2><a href="#friends">Seeing friends' items</a></h2>
+<pre><code>skylls source add alice        <span class="cm"># see what alice shared with you (accepts her invites)</span>
+skylls source                  <span class="cm"># your friends and how many items each shared</span>
+skylls source remove alice</code></pre>
+        <p>Run <code>source add</code> once per friend (their GitHub login or organization). Later shares from that friend are accepted automatically. If someone you haven't added shares with you, <code>skylls list</code> tells you, and you decide whether to add them.</p>
+      </section>
+
+      <!-- Suggestions -->
+      <section id="suggestions">
+        <h2><a href="#suggestions">Suggestions</a></h2>
+        <p>Only the owner publishes an item. Friends suggest improvements, which become GitHub issues in the owner's repo:</p>
+<pre><code>skylls suggest pdf --from alice "Also handle scanned PDFs"   <span class="cm"># an issue in alice's repo, assigned to her</span>
+skylls suggestions                                           <span class="cm"># open suggestions for your items</span>
+skylls accept pdf#3 -m "Done in 1.3.0"                       <span class="cm"># closes it as done</span>
+skylls decline pdf#4 -m "Out of scope"                       <span class="cm"># closes it as not planned</span></code></pre>
+      </section>
+
+      <!-- Folders -->
+      <section id="folders">
+        <h2><a href="#folders">Folders</a></h2>
+        <p>GitHub has no folders for repos, so skylls uses <strong>topics</strong>:</p>
+<pre><code>skylls push pdf --folder docs  <span class="cm"># or later: skylls move pdf docs   ('.' = no folder)</span>
+skylls folder                  <span class="cm"># your folders and how many items each has</span>
+skylls folder rename docs office
+skylls folder remove office    <span class="cm"># items stay, just without a folder</span>
+skylls list -f docs            <span class="cm"># filter (also: find -f docs)</span></code></pre>
+        <p>On GitHub, filter your repos by topic: <code>github.com/&lt;owner&gt;?tab=repositories&amp;q=topic:docs</code>.</p>
+      </section>
+
+      <!-- Dashboard -->
+      <section id="dashboard">
+        <h2><a href="#dashboard">The dashboard</a></h2>
+        <p>The <a href="/dashboard">dashboard</a> does the sharing side of skylls from your browser. <strong>Sign in with GitHub</strong> and you can:</p>
+        <ul>
+          <li><strong>Yours:</strong> see your skills, agents and swarms (tabs), with version, folder and summary. Click <em>Who can see it</em> to list the people with access, share with a GitHub user, or remove someone.</li>
+          <li><strong>Shared with you, waiting:</strong> accept invitations friends sent you.</li>
+          <li><strong>Open suggestions:</strong> accept or decline them, with a note.</li>
+          <li><strong>Friends' items:</strong> copy the install command for anything friends shared with you.</li>
+        </ul>
+        <p>Publishing and installing still happen in the terminal: the dashboard has no access to your computer.</p>
+        <p>GitHub asks for the <code>repo</code> and <code>read:org</code> permissions, needed to read your <strong>private</strong> skylls repos and manage who can see them. The dashboard only touches skylls repos. It has no database: your token is kept in an encrypted cookie in your browser for up to 30 days, and signing out deletes it. Read the <a href="/privacy">privacy policy</a> for details.</p>
+      </section>
+
+      <!-- Security -->
+      <section id="security">
+        <h2><a href="#security">Security and privacy</a></h2>
+        <ul>
+          <li><strong>Private repos only.</strong> Every item repo is created private. If skylls finds one that is public, it warns you and offers to make it private.</li>
+          <li><strong>Nothing shared by default.</strong> Friends are invited to single repos, never to your whole account or organization.</li>
+          <li><strong>Secret scan on every push.</strong> gitleaks checks for keys, tokens, passwords and personal data before anything is uploaded, and the push stops if it finds any.</li>
+          <li><strong>Definitions, not state.</strong> Agents and swarms never publish logs, data, local settings, env files or keys (see <a href="#agents-swarms">what gets published</a>).</li>
+          <li><strong>No skylls server for your data.</strong> The CLI talks directly to GitHub with your own <code>gh</code> login. The dashboard has no database and keeps your token only in an encrypted cookie.</li>
+          <li><strong>Read what you install.</strong> A skill is instructions your agent follows. Install items from people you trust, and check <code>skylls log &lt;name&gt;</code> to see who changed what.</li>
+        </ul>
+      </section>
+
+      <!-- For agents -->
+      <section id="for-agents">
+        <h2><a href="#for-agents">For AI agents</a></h2>
+        <p>Setup installs <strong>the skylls skill</strong>, which teaches Claude Code, Codex and Gemini to use skylls: install it if it's missing, find and install skills, agents and swarms, and <strong>ask you before publishing or sharing anything</strong>. So you can just ask your agent: <em>"find a skill for PDF forms and install it"</em>.</p>
+<pre><code>skylls agent-skill -g -a all                     <span class="cm"># install (or reinstall) it later</span>
+skylls add jcsancho/skylls/skylls -g -a all      <span class="cm"># or straight from GitHub</span></code></pre>
+        <p>After an upgrade, the next skylls command updates your installed copy.</p>
+        <h3>JSON output</h3>
+        <p>With <code>--json</code>, read commands print one compact JSON object per line on stdout, without empty fields. Messages and errors go to stderr.</p>
+<pre><code><span class="op">$</span> skylls find pdf --json --limit 5
+{"name":"pdf","owner":"alice","folder":"docs","version":"1.3.0","summary":"Fills in PDF forms for you.","updated":"2026-10-07","repo":"alice-skylls/skill-pdf"}
+
+skylls installed --json        <span class="cm"># "newer" when an update exists</span>
+skylls log pdf --json          <span class="cm"># details + version history</span>
+skylls agents list --json      <span class="cm"># "published":false for ones not published yet</span></code></pre>
+        <p><code>find --json</code> returns at most 10 results unless you pass <code>--limit</code>.</p>
+      </section>
+
+      <!-- Public -->
+      <section id="public">
+        <h2><a href="#public">Public skills from skills.sh</a></h2>
+<pre><code>skylls search pdf                          <span class="cm"># top matches on skills.sh, with install counts</span>
+skylls add anthropics/skills/pdf -g        <span class="cm"># install straight from a public GitHub repo</span></code></pre>
+      </section>
+
+      <!-- How it works -->
+      <section id="how-it-works">
+        <h2><a href="#how-it-works">How it works</a></h2>
+<pre><code>&lt;org&gt;/skill-pdf      ┐  one private repo per item, only what friends may see
+&lt;org&gt;/agent-btc      │  + CHANGELOG.md, tags v1.0.0…, topics (folder)
+&lt;org&gt;/swarm-apps     ┘  (personal account: skylls-skill-pdf, …)
+        ▲ push (copy, commit, tag)        │ add (copy the version you want)
+        │                                 ▼
+~/.claude/skills/pdf   ~/agents/btc   ~/swarms/apps       <span class="cm">← your copies / workspaces</span></code></pre>
+        <ul>
+          <li><strong>Config:</strong> <code>~/.config/skylls/config.json</code> holds your login, where you publish, your agent CLIs, your folders and your friends.</li>
+          <li><strong>Finding items:</strong> two GitHub GraphQL queries (the repos you can access, then the skylls repos' changelogs and instructions).</li>
+          <li><strong>Publishing and installing:</strong> small clones in <code>~/.cache/skylls/repos/</code>.</li>
+          <li><strong>Your folders:</strong> <code>~/agents</code> and <code>~/swarms</code> are just your workspaces. skylls never commits there.</li>
+          <li><strong>Naming:</strong> in an organization repos are <code>skill-…</code>, <code>agent-…</code>, <code>swarm-…</code>; on a personal account <code>skylls-skill-…</code> and so on. A repo only counts as a skylls item if it has the <code>skylls</code> topic, which skylls sets.</li>
+        </ul>
+      </section>
+
+      <!-- Reference -->
+      <section id="reference">
+        <h2><a href="#reference">Command reference</a></h2>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Command</th><th>What it does</th></tr>
+            <tr><td><code>setup [--owner O] [--agents A] [--agents-dir D] [--swarms-dir D] [--no-agent-skill]</code></td><td>Your account or organization, agent CLIs, folders, the skylls skill</td></tr>
+            <tr><td><code>list [query] [--from O] [-f F]</code></td><td>Your items and what friends shared, grouped by folder</td></tr>
+            <tr><td><code>find &lt;words&gt; [--from O] [-f F] [-n N]</code></td><td>Search; shows summary, version, owner, folder</td></tr>
+            <tr><td><code>add &lt;name[@ver]&gt; [--from O] [-g] [-a A] [-y]</code></td><td>Install a skill (<code>owner/repo/skill</code>: from a public repo)</td></tr>
+            <tr><td><code>log &lt;name&gt; [--from O]</code></td><td>Who made it, versions, what changed</td></tr>
+            <tr><td><code>installed [-g] [-a A]</code></td><td>Installed skills and newer versions</td></tr>
+            <tr><td><code>pull [--update]</code></td><td>Check for (and install) newer versions</td></tr>
+            <tr><td><code>remove &lt;name&gt; [-g] [-a A]</code></td><td>Remove a local skill copy</td></tr>
+            <tr><td><code>push &lt;name|path&gt; [-m msg] [--minor|--major] [--about text] [--folder F] [--skip-scan]</code></td><td>Publish a new version to its private repo</td></tr>
+            <tr><td><code>share &lt;name&gt; @user… | --all @user</code></td><td>Let friends install it (no users: who has access)</td></tr>
+            <tr><td><code>unshare &lt;name&gt; @user… | --all @user</code></td><td>Revoke access</td></tr>
+            <tr><td><code>move &lt;name&gt; &lt;folder&gt;</code></td><td>Put it in a folder (<code>.</code> = none)</td></tr>
+            <tr><td><code>folder [rename old new | remove F]</code></td><td>Your folders</td></tr>
+            <tr><td><code>source [add|remove] &lt;login&gt;</code></td><td>Friends whose shares you see</td></tr>
+            <tr><td><code>suggest &lt;name&gt; [--from O] "text"</code></td><td>Suggest an improvement to the owner</td></tr>
+            <tr><td><code>suggestions [name]</code> / <code>accept &lt;name&gt;#&lt;n&gt;</code> / <code>decline &lt;name&gt;#&lt;n&gt;</code></td><td>Your open suggestions, and answering them</td></tr>
+            <tr><td><code>agents …</code> / <code>swarms …</code></td><td>The same commands for agents and swarms, plus <code>add --as N --update-memory</code> and <code>remove [--memory] [-y]</code></td></tr>
+            <tr><td><code>agent-skill [-g] [-a A]</code></td><td>(Re)install the skylls skill for your agents</td></tr>
+            <tr><td><code>search &lt;query&gt;</code></td><td>Public skills on skills.sh</td></tr>
+            <tr><td><code>version</code> / <code>--version</code></td><td>The skylls version</td></tr>
+            <tr><td><code>--json</code> / <code>--dry-run</code> (before the command)</td><td>Compact output for agents / preview only</td></tr>
+          </table>
+        </div>
+        <p>Run <code>skylls help</code> for the same list in your terminal.</p>
+      </section>
+
+      <!-- FAQ -->
+      <section id="faq">
+        <h2><a href="#faq">FAQ</a></h2>
+        <h3>Can a friend see my other skills?</h3>
+        <p>No. Each item is its own private repo, and friends are invited to single repos only. GitHub enforces it.</p>
+        <h3>What happens to a friend's copy when I unshare?</h3>
+        <p>What they already installed stays on their machine. They just can't get new versions.</p>
+        <h3>Can friends change my skill?</h3>
+        <p>No. Only you publish. Friends send <a href="#suggestions">suggestions</a>, which you accept or decline.</p>
+        <h3>The secret scan stopped my push, but it's a false positive.</h3>
+        <p>Check the finding first. If it really is safe, push again with <code>--skip-scan</code>.</p>
+        <h3>Two friends have a skill with the same name.</h3>
+        <p>Pick one with <code>--from &lt;owner&gt;</code>, for example <code>skylls add pdf --from alice</code>.</p>
+        <h3>Where do I report a bug?</h3>
+        <p>Open an issue at <a href="https://github.com/jcsancho/skylls/issues" target="_blank" rel="noopener">github.com/jcsancho/skylls/issues</a>.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <span>skylls &copy; 2026 &middot; Apache-2.0 &middot; Built for people who share agent skills</span>
+    <div style="display:flex;gap:20px">
+      <a href="https://github.com/jcsancho/skylls" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://www.npmjs.com/package/@jcsancho/skylls" target="_blank" rel="noopener">npm</a>
+      <a href="/docs">Docs</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </div>
+  </footer>
+
+  <script>
+    // Copy buttons on code blocks
+    document.querySelectorAll("main pre").forEach((pre) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "copy";
+      button.textContent = "Copy";
+      button.addEventListener("click", () => {
+        const text = pre.querySelector("code").innerText;
+        navigator.clipboard.writeText(text).then(() => {
+          button.textContent = "Copied!";
+          setTimeout(() => (button.textContent = "Copy"), 2000);
+        }).catch(() => {});
+      });
+      pre.appendChild(button);
+    });
+
+    // Highlight the current section in the sidebar
+    const links = new Map([...document.querySelectorAll(".toc a")].map((a) => [a.getAttribute("href").slice(1), a]));
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        links.forEach((a) => a.classList.remove("active"));
+        links.get(entry.target.id)?.classList.add("active");
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    document.querySelectorAll("main section[id]").forEach((section) => observer.observe(section));
+  </script>
+</body>
+</html>

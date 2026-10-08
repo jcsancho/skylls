@@ -32,6 +32,8 @@
     .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; color: var(--text); text-decoration: none; }
     .nav-brand svg { width: 28px; height: 28px; }
     .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-docs { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; font-weight: 500; margin-right: 8px; }
+    .nav-docs:hover { color: var(--text); }
     #user-info { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); }
     #user-info img { width: 24px; height: 24px; border-radius: 50%; }
 
@@ -149,6 +151,7 @@
         skylls
       </a>
       <div class="nav-right">
+        <a class="nav-docs" href="/docs">Docs</a>
         <span id="user-info"></span>
         <button id="sign-out" class="btn btn-outline btn-small" hidden>Sign out</button>
       </div>

@@ -3,6 +3,15 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.3.0 — 2026-10-08
+
+- **New `/docs` page**: the full user guide on the website, covering install,
+  setup, quick start, publishing, versions, agents and swarms with their memory,
+  sharing, suggestions, folders, the dashboard, security, `--json` for agents,
+  the command reference and an FAQ. It has a sidebar table of contents and copy
+  buttons on code blocks. It's linked from the landing page's nav, hero and
+  footer.
+
 ## webapp 1.2.0 — 2026-10-08
 
 - **Ready for the GitHub Marketplace.**
