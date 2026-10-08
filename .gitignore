@@ -1,0 +1,236 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ==============================================
+# FRAMEWORKS & TOOLS
+# ==============================================
+
+# React
+build/
+.eslintcache
+
+# Vue.js
+dist/
+.nuxt/
+
+# Angular
+dist/
+.angular/
+
+# Next.js
+.next/
+out/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+celerybeat-schedule
+celerybeat.pid
+.spyderproject
+.spyproject
+.ropeproject
+.env
+venv/
+ENV/
+env/
+.venv/
+.ENV/
+.env/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+venv/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-debug.log*
+yarn-error.log*
+
+# ==============================================
+# SECURITY & SENSITIVE FILES
+# ==============================================
+
+# Environment variables and configuration
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+*.env
+.envrc
+.env.*
+*.key
+*.pem
+*.crt
+
+# API Keys and Secrets
+**/secrets/
+**/secret/
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cert
+*.csr
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+*.pub
+known_hosts
+authorized_keys
+
+# Build & dist
+dist/
+build/
+*.log
+coverage/
+*.egg-info/
+
+# Git
+.git/
+*.orig
+*.rej
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db3
+*.s3db
+*.sl3
+
+# Backup files
+*.backup
+*.bak
+*.swp
+*.swo
+
+# ==============================================
+# DATABASES
+# ==============================================
+
+# PostgreSQL
+*.dump
+*.sql
+
+# MongoDB
+*.mongodb
+
+# Redis
+dump.rdb
+
+# ==============================================
+# CLOUD & DEPLOYMENT
+# ==============================================
+
+# AWS
+.aws/
+*.pem
+
+# Google Cloud
+*service-account*.json
+*service_account*.json
+gcloud-*.json
+gcp-key*.json
+gcloud/
+
+# Azure
+.azure/
+
+# Heroku
+.env.production
+
+# Netlify
+.netlify/
+
+# Vercel
+.vercel/
+
+# ==============================================
+# TEMPORARY & CACHE FILES
+# ==============================================
+
+# General
+*.tmp
+*.temp
+*.cache
+.cache/
+.parcel-cache/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+
+# Misc
+*.bak
+*.tmp
+
+# Personal Claude Code files: kept local, never published with the public tool
+CLAUDE.md
+.claude/

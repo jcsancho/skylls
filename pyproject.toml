@@ -1,0 +1,22 @@
+[project]
+name = "skylls"
+version = "0.1.0"
+description = "Share agent skills, agents and swarms (Claude Code, Codex, Gemini) through your own private GitHub repos"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/jcsancho/skylls"
+
+[project.scripts]
+skylls = "skylls.cli:main"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["skylls*"]
