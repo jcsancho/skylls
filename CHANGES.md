@@ -3,6 +3,13 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.2.1 — 2026-10-08
+
+- The npm package is **`@jcsancho/skylls`** (npm refused the plain name
+  `skylls` as too similar to existing packages). Install with
+  `npm install -g @jcsancho/skylls` or run `npx @jcsancho/skylls`; the command
+  is still `skylls`.
+
 ## 1.2.0 — 2026-10-08
 
 - **npm package:** `npm install -g skylls`, or `npx skylls`.

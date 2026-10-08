@@ -34,13 +34,13 @@ Options: `-y` answers yes to everything, `--no-setup` only installs, and
 With npm (needs Node 18+ and Python 3.11+; the package runs the Python tool):
 
 ```bash
-npm install -g skylls && skylls setup      # or try it: npx skylls --version
+npm install -g @jcsancho/skylls && skylls setup      # or try it: npx @jcsancho/skylls --version
 ```
 
 Or by hand: `uv tool install git+https://github.com/jcsancho/skylls` (or
 `pipx install …`), then `skylls setup`.
 
-Update with `uv tool upgrade skylls`, or `npm update -g skylls`. Check your
+Update with `uv tool upgrade skylls`, or `npm update -g @jcsancho/skylls`. Check your
 version with `skylls --version`; [CHANGES.md](CHANGES.md) lists what changed
 in each.
 
