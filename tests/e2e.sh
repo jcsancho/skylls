@@ -84,3 +84,10 @@ s agents remove btc -y | tail -1
 mkdir -p $T/home/dave/.config/skylls; echo '{"repo": "dave/skills", "agents": ["codex"], "kinds": {}}' > $T/home/dave/.config/skylls/config.json
 user dave; s list | grep -E "quick setup|published to" | head -2; python3 -c "import json;print('  migrated:', json.load(open('$HOME/.config/skylls/config.json')))"
 echo "--- all --json lines valid"; for c in "list" "find pdf" "installed" "agents list" "suggestions"; do user alice; sj $c | python3 -c "import sys,json;[json.loads(l) for l in sys.stdin if l.strip()];print('  ok:', '$c')"; done
+
+echo "######## update skylls itself (newest = highest tag of jcsancho/skylls)"; user alice
+git init --quiet --bare $GHROOT/jcsancho/skylls.git; R=$T/skylls-src; git init --quiet $R
+git -C $R commit --quiet --allow-empty -m x; git -C $R tag v1.0.0; git -C $R tag v99.0.0; git -C $R push --quiet --tags $GHROOT/jcsancho/skylls.git
+s update --check | grep -E "available|Install it"; sj update --check
+s --dry-run update | tail -1   # from a checkout (PYTHONPATH): it can't replace itself
+git --git-dir $GHROOT/jcsancho/skylls.git tag -d v99.0.0 >/dev/null; s update | tail -1

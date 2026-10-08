@@ -12,6 +12,7 @@ Every skill, agent and swarm the user publishes is its own private GitHub repo; 
 If not found, ask the user before installing:
     bash -c "$(curl -fsSL https://raw.githubusercontent.com/jcsancho/skylls/main/install.sh)"
 If it asks for setup, tell the user to run `skylls setup` (it asks questions).
+If results look wrong or a command is missing, check for a newer skylls: `skylls update --check` (`skylls update` installs it; ask first).
 
 ## 1. Find (the user's own + what friends shared)
     skylls find <keywords> --json --limit 5          # skills

@@ -40,7 +40,8 @@ npm install -g @jcsancho/skylls && skylls setup      # or try it: npx @jcsancho/
 Or by hand: `uv tool install git+https://github.com/jcsancho/skylls` (or
 `pipx install …`), then `skylls setup`.
 
-Update with `uv tool upgrade skylls`, or `npm update -g @jcsancho/skylls`. Check your
+Update with `skylls update` (`--check` only looks), which reinstalls the newest
+release the way you installed it (uv, pipx or npm). Check your
 version with `skylls --version`; [CHANGES.md](CHANGES.md) lists what changed
 in each.
 
@@ -332,6 +333,7 @@ Add `--dry-run` before any command to see what it would do without changing anyt
 | `agent-skill [-g] [-a A]` | (Re)install the skylls skill for your agents |
 | `search <query>` | Public skills on skills.sh |
 | `version` / `--version` | The skylls version |
+| `update [--check]` | Update skylls itself to the newest version |
 | `--json` / `--dry-run` (before the command) | Compact output for agents / preview only |
 
 ## Requirements

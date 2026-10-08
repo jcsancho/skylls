@@ -277,9 +277,10 @@ skylls setup</code></pre>
         </ul>
 
         <h3>Updating</h3>
-<pre><code>npm update -g @jcsancho/skylls     <span class="cm"># if you installed with npm</span>
-uv tool upgrade skylls             <span class="cm"># if you used the installer or uv</span>
+<pre><code>skylls update                      <span class="cm"># the newest version, installed the way you installed skylls</span>
+skylls update --check              <span class="cm"># only check</span>
 skylls --version                   <span class="cm"># check your version</span></code></pre>
+        <p>On 1.2.2 or older (no <code>skylls update</code> yet), update once by hand: <code>uv tool install --force git+https://github.com/jcsancho/skylls</code>, or <code>npm install -g @jcsancho/skylls</code> if you installed with npm.</p>
       </section>
 
       <!-- Setup -->
@@ -556,6 +557,7 @@ skylls add anthropics/skills/pdf -g        <span class="cm"># install straight f
             <tr><td><code>agent-skill [-g] [-a A]</code></td><td>(Re)install the skylls skill for your agents</td></tr>
             <tr><td><code>search &lt;query&gt;</code></td><td>Public skills on skills.sh</td></tr>
             <tr><td><code>version</code> / <code>--version</code></td><td>The skylls version</td></tr>
+            <tr><td><code>update [--check]</code></td><td>Update skylls itself to the newest version</td></tr>
             <tr><td><code>--json</code> / <code>--dry-run</code> (before the command)</td><td>Compact output for agents / preview only</td></tr>
           </table>
         </div>

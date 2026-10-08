@@ -504,6 +504,74 @@ def cmd_agent_skill(cfg: dict, agent: Optional[str], is_global: bool, dry_run: b
     kinds.install_skill_copy(cfg, AGENT_SKILL_DIR, "skylls", agent, is_global, True, dry_run)
 
 
+# ── Updating skylls itself ─────────────────────────────────────────────────
+SKYLLS_REPO = "jcsancho/skylls"
+NPM_PACKAGE = "@jcsancho/skylls"
+
+
+def install_kind() -> str:
+    """How this skylls was installed: npm, uv, pipx, source (a checkout or editable install) or pip."""
+    pkg = Path(__file__).resolve().parent
+    if "node_modules" in pkg.parts:
+        return "npm"
+    prefix = Path(sys.prefix).resolve()
+    if not pkg.is_relative_to(prefix):
+        return "source"
+    if (prefix / "uv-receipt.toml").is_file():
+        return "uv"
+    return "pipx" if (prefix / "pipx_metadata.json").is_file() else "pip"
+
+
+def latest_version(kind: str) -> Optional[str]:
+    """The newest released skylls: on npm for npm installs, else the highest v<x.y.z> tag on GitHub."""
+    if kind == "npm":
+        res = subprocess.run(["npm", "view", NPM_PACKAGE, "version"], capture_output=True, text=True)
+        return res.stdout.strip() or None
+    res = git("ls-remote", "--tags", "--refs", repo_url(SKYLLS_REPO), check=False)
+    tags = re.findall(r"refs/tags/v(\d+\.\d+\.\d+)$", res.stdout, re.M)
+    return max(tags, key=version_key) if tags else None
+
+
+def cmd_update(check: bool, dry_run: bool) -> None:
+    """Install the newest skylls the same way this one was installed (uv, pipx or npm)."""
+    kind = install_kind()
+    latest = latest_version(kind)
+    if not latest:
+        die("Could not find the newest skylls version (no network, or GitHub/npm unreachable).")
+    newer = version_key(latest) > version_key(__version__)
+    if JSON_MODE and (check or not newer):
+        emit({"version": __version__, "latest": latest, "newer": newer, "installed_with": kind})
+    if not newer:
+        ok(f"skylls {__version__} is the newest version.")
+        return
+    info(f"skylls {latest} is available (you have {__version__}). What changed: "
+         f"https://github.com/{SKYLLS_REPO}/blob/main/CHANGES.md")
+    if check:
+        info("Install it with: skylls update")
+        return
+    source = os.environ.get("SKYLLS_SOURCE", f"git+https://github.com/{SKYLLS_REPO}")
+    spec = f"{source}@v{latest}" if source.startswith("git+") else source
+    cmd = {"uv": ["uv", "tool", "install", "--force", "--quiet", spec],
+           "pipx": ["pipx", "install", "--force", spec],
+           "npm": ["npm", "install", "-g", f"{NPM_PACKAGE}@{latest}"]}.get(kind)
+    if not cmd:
+        where = Path(__file__).resolve().parent.parent
+        die(f"This skylls runs from {where} ({kind} install), so it can't update itself. "
+            + ("Run git pull there." if kind == "source" else f"Reinstall with: uv tool install --force {spec}"))
+    if not shutil.which(cmd[0]):
+        die(f"{cmd[0]} is not on your PATH; skylls was installed with it. Run: {' '.join(cmd)}")
+    if dry_run:
+        info(f"[dry-run] Would run: {' '.join(cmd)}")
+        return
+    section(f"Updating skylls {__version__} → {latest}")
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        die(f"The update failed ({' '.join(cmd)}):\n{(res.stderr or res.stdout).strip()}")
+    ok(f"skylls {latest} installed. The skylls skill for your agents updates the next time you run skylls.")
+    if JSON_MODE:
+        emit({"version": latest, "previous": __version__, "updated": True, "installed_with": kind})
+
+
 # ── Command line ───────────────────────────────────────────────────────────
 def show_help() -> None:
     say(f"""
@@ -541,6 +609,7 @@ Every item you publish gets its own private GitHub repo; you share item by item.
   {GREEN}setup{NC}                              Your account or organization, agent CLIs, folders
   {GREEN}agent-skill{NC} [-g] [-a A]            Teach your agents to use skylls
   {GREEN}version{NC}                            Show the skylls version
+  {GREEN}update{NC} [--check]                   Update skylls itself to the newest version
 
 {CYAN}OPTIONS:{NC}
   {YELLOW}-g, --global{NC}        Skills: ~/<agent dir> instead of ./<agent dir>
@@ -591,6 +660,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Don't install the skylls skill for Claude Code, Codex and Gemini.")
 
     sub.add_parser("version", help="Show the skylls version.")
+    sp = sub.add_parser("update", help="Update skylls itself to the newest version.")
+    sp.add_argument("--check", action="store_true", help="Only say whether a newer version exists.")
     sub.add_parser("help", help="Show detailed help and usage examples.")
     sp = sub.add_parser("search", help="Search public skills on skills.sh.")
     sp.add_argument("query")
@@ -629,6 +700,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
     if args.cmd == "search":
         cmd_search(args.query, args.limit)
+        return 0
+    if args.cmd == "update":
+        cmd_update(args.check, args.dry_run)
         return 0
     if args.cmd == "setup":
         setup(args.agents, args.owner, {k: getattr(args, f"{k}_dir") for k in ("agents", "swarms")},

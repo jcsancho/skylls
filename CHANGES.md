@@ -3,6 +3,17 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.3.0 and webapp 1.3.1 — 2026-10-08
+
+- **New `skylls update`**: updates skylls itself to the newest release, the
+  same way it was installed (uv, pipx or npm), pinned to that version's tag.
+  `--check` only says whether a newer one exists; `--dry-run update` shows the
+  command. A checkout or editable install is told to `git pull` instead.
+  Anyone on 1.2.1 or older should update: their organization items are
+  invisible (fixed in 1.2.2).
+- webapp: `/docs` shows `skylls update`, and the one-time manual update for
+  1.2.2 and older.
+
 ## webapp 1.3.0 — 2026-10-08
 
 - **New `/docs` page**: the full user guide on the website, covering install,
