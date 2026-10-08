@@ -1,0 +1,27 @@
+{
+  "name": "skylls",
+  "version": "1.2.0",
+  "description": "Share agent skills, agents and swarms (Claude Code, Codex, Gemini) through your own private GitHub repos",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jcsancho/skylls",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jcsancho/skylls.git"
+  },
+  "keywords": ["claude", "claude-code", "codex", "gemini", "agent-skills", "agents", "skills", "github"],
+  "bin": {
+    "skylls": "bin/skylls.js"
+  },
+  "files": [
+    "bin/skylls.js",
+    "skylls/*.py",
+    "skylls/skills/**/SKILL.md",
+    "README.md",
+    "CHANGES.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -3,6 +3,14 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.2.0 — 2026-10-08
+
+- **npm package:** `npm install -g skylls`, or `npx skylls`.
+  - `package.json` and `bin/skylls.js`, a small Node launcher that runs the
+    bundled Python tool with Python 3.11+ (`SKYLLS_PYTHON` picks one).
+  - It explains how to get Python when none is found.
+- `tests/e2e.sh` checks that `package.json` and `skylls --version` agree.
+
 ## 1.1.0 — 2026-10-08
 
 - **An organization is the recommended home.**

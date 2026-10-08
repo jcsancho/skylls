@@ -4,6 +4,9 @@
 
 D=$(cd "$(dirname "$0")" && pwd); T=$(mktemp -d); mkdir -p $T/fake $T/gh
 export GHROOT=$T/gh PYTHONPATH=$(dirname "$D")
+PYV=$(python3 -c "import skylls; print(skylls.__version__)")
+NPMV=$(python3 -c "import json; print(json.load(open('$(dirname "$D")/package.json'))['version'])")
+[ "$PYV" = "$NPMV" ] && echo "versions match: $PYV" || { echo "VERSION MISMATCH: __version__ $PYV, package.json $NPMV"; exit 1; }
 printf '#!/bin/bash\nexec python3 %s "$@"\n' "$D/fakegh.py" > $T/fake/gh
 printf '#!/bin/bash\ncat >/dev/null; echo "Does useful things."\n' > $T/fake/claude
 chmod +x $T/fake/gh $T/fake/claude; export PATH=$T/fake:$PATH
