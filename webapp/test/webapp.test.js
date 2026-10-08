@@ -209,6 +209,32 @@ test("a revoked refresh token signs you out; non-expiring tokens are left alone"
   assert.equal(plain.headers.get("set-cookie"), null);
 });
 
+test("privacy and terms pages", async () => {
+  assert.match((await call("/privacy")).data, /has no database and doesn't store your data/);
+  assert.match((await call("/terms")).data, /Apache License 2\.0/);
+});
+
+test("Marketplace webhook: signature checked, events acknowledged", async () => {
+  const { signature } = await import("../api/marketplace.js");
+  const hook = async (payload, sig, event = "marketplace_purchase") => {
+    const res = await app(new Request("http://localhost/api/marketplace", {
+      method: "POST", body: payload,
+      headers: { "x-github-event": event, ...(sig ? { "x-hub-signature-256": sig } : {}) },
+    }));
+    return { status: res.status, data: await res.json() };
+  };
+  const payload = JSON.stringify({ action: "purchased", marketplace_purchase: { account: { login: "bob" }, plan: { name: "Free" } } });
+  delete process.env.MARKETPLACE_WEBHOOK_SECRET;
+  assert.equal((await hook(payload, "sha256=x")).status, 503);
+  process.env.MARKETPLACE_WEBHOOK_SECRET = "hook-secret-for-tests"; // gitleaks:allow (test value)
+  assert.equal((await hook(payload)).status, 401);
+  assert.equal((await hook(payload, signature("wrong", payload))).status, 401);
+  const ok = await hook(payload, signature("hook-secret-for-tests", payload));
+  assert.deepEqual(ok.data, { ok: true, event: "marketplace_purchase", action: "purchased" });
+  const ping = await hook("{}", signature("hook-secret-for-tests", "{}"), "ping");
+  assert.equal(ping.data.event, "ping");
+});
+
 test("logout clears the cookie", async () => {
   const res = await call("/api/auth/logout", { user: "alice", method: "POST", body: {} });
   assert.match(res.headers.get("set-cookie"), /skylls_session=; Path=\/; HttpOnly; SameSite=Lax; Max-Age=0/);

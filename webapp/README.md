@@ -28,10 +28,11 @@ same logic as the CLI (`../skylls/kinds.py`).
 
 | file | what |
 |---|---|
-| `index.html`, `dashboard.html` | the pages |
+| `index.html`, `dashboard.html`, `privacy.html`, `terms.html` | the pages |
 | `api/auth/login.js`, `callback.js`, `logout.js` | sign-in with GitHub |
 | `api/me.js`, `items.js`, `access.js` | who you are; your and your friends' items + invitations; who can see an item |
 | `api/share.js`, `unshare.js`, `invite.js`, `suggestion.js` | the actions |
+| `api/marketplace.js` | GitHub Marketplace webhook (signature-checked, acknowledges events) |
 | `lib/github.js` | GitHub API + the skylls catalog (same rules as the CLI) |
 | `lib/session.js`, `lib/http.js` | encrypted session cookie, JSON helpers |
 | `dev.js` | local server that routes like Vercel |
@@ -63,7 +64,12 @@ same logic as the CLI (`../skylls/kinds.py`).
    Optional: `APP_URL=https://<your-domain>`, if the public URL differs from
    the one requests arrive on.
 
-4. **Deploy:**
+4. **Optional: the GitHub Marketplace webhook.** Set
+   `MARKETPLACE_WEBHOOK_SECRET` (`openssl rand -hex 32`). In the Marketplace
+   listing, set the webhook URL `https://<your-domain>/api/marketplace` and enter
+   the same secret. Until the secret is set, the endpoint answers 503.
+
+5. **Deploy:**
    ```bash
    vercel --prod
    ```

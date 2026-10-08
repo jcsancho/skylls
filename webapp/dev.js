@@ -6,7 +6,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-const PAGES = { "/": "index.html", "/index": "index.html", "/dashboard": "dashboard.html" };
+const PAGES = {
+  "/": "index.html", "/index": "index.html", "/dashboard": "dashboard.html",
+  "/privacy": "privacy.html", "/terms": "terms.html",
+};
 
 /** Route a Web Request the way Vercel does for this project. */
 export async function app(request) {

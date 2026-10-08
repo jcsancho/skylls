@@ -3,6 +3,17 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.2.0 — 2026-10-08
+
+- **Ready for the GitHub Marketplace.**
+  - New `/privacy` and `/terms` pages, linked from the footer and the sign-in
+    screen.
+  - New Marketplace webhook at `/api/marketplace`. It checks GitHub's
+    `X-Hub-Signature-256` against `MARKETPLACE_WEBHOOK_SECRET` and acknowledges
+    each event. skylls is free and keeps no database, so there is nothing to set
+    up per customer.
+- The site's home is now `skylls.dev`.
+
 ## 1.2.2 and webapp 1.1.1 — 2026-10-08
 
 - **Fix: items in organizations were invisible.** The repo-list query used
