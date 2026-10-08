@@ -262,7 +262,8 @@ def ensure_private(repo: str) -> None:
 
 # ── Catalog: what you and your friends have ────────────────────────────────
 LIST_QUERY = """query($endCursor: String) { viewer { repositories(first: 100, after: $endCursor,
-  affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]) {
+  affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER],
+  ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]) {
   nodes { name owner { login } } pageInfo { hasNextPage endCursor } } } }"""
 ITEM_FIELDS = """name owner { login } isPrivate pushedAt url
   repositoryTopics(first: 20) { nodes { topic { name } } }

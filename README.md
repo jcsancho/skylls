@@ -264,6 +264,21 @@ skylls agents list --json           # "published":false for ones not published y
 
 `find --json` returns at most 10 results unless you pass `--limit`.
 
+## Website and dashboard
+
+[`webapp/`](webapp/) holds the skylls website and dashboard, deployed on
+Vercel. **Sign in with GitHub** to manage everything from the browser:
+
+- **Your items:** see your skills, agents and swarms (version, folder,
+  summary), and who can see each one. Share with a user, or remove someone.
+- **Invitations:** accept what friends shared with you.
+- **Suggestions:** accept or decline them, with a note.
+- **Friends' items:** copy the install command for anything friends shared.
+
+It has no database: it works directly on your GitHub with your own access, and
+keeps your token in an encrypted cookie. Deployment and local testing are
+described in [webapp/README.md](webapp/README.md).
+
 ## Public skills from skills.sh
 
 ```bash

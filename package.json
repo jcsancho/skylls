@@ -1,6 +1,6 @@
 {
   "name": "@jcsancho/skylls",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Share agent skills, agents and swarms (Claude Code, Codex, Gemini) through your own private GitHub repos",
   "license": "Apache-2.0",
   "homepage": "https://github.com/jcsancho/skylls",

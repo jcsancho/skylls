@@ -3,6 +3,41 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.2.2 and webapp 1.1.1 — 2026-10-08
+
+- **Fix: items in organizations were invisible.** The repo-list query used
+  GitHub's default `ownerAffiliations`, which leaves out repos owned by
+  organizations.
+  - In the CLI, `list`, `find`, `log`, `add` and `share` missed everything
+    published to an organization.
+  - In the dashboard, "Yours" was empty.
+  - Both now ask for organization repos explicitly.
+- The test fake GitHubs now behave like GitHub here, so this can't come back
+  unnoticed.
+
+## webapp 1.1.0 — 2026-10-08
+
+- **Stay signed in for 30 days.** With "Expire user access tokens" on the
+  GitHub OAuth app, the dashboard keeps GitHub's refresh token and renews the
+  8-hour access token automatically.
+- If the refresh token was revoked, you're signed out with a clear message.
+
+## webapp 1.0.0 — 2026-10-08
+
+The website and dashboard (`webapp/`, deployed on Vercel; the CLI is unchanged):
+
+- **Landing page:** what skylls is, install commands, features, how it works,
+  organizations as folders, and examples.
+- **Dashboard (sign in with GitHub):**
+  - Your skills, agents and swarms, and who can see each one; share or remove
+    someone.
+  - Accept invitations; answer suggestions; copy install commands for friends'
+    items.
+- **How it works:** no database; the GitHub token is kept in an encrypted
+  HttpOnly cookie, and actions are protected against cross-site requests.
+- **Tests:** against a fake GitHub (`node --test test/`), plus a local demo
+  (`node test/demo.js`).
+
 ## 1.2.1 — 2026-10-08
 
 - The npm package is **`@jcsancho/skylls`** (npm refused the plain name

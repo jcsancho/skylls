@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — skylls</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='6' fill='%238b5cf6' fill-opacity='.2'/%3E%3Crect x='7' y='7' width='14' height='3.5' rx='1.75' fill='%23a78bfa'/%3E%3Crect x='7' y='12.25' width='14' height='3.5' rx='1.75' fill='%2322d3ee'/%3E%3Crect x='7' y='17.5' width='9' height='3.5' rx='1.75' fill='%23a78bfa'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b; --surface: #131316; --surface-hover: #1a1a1f;
+      --border: #27272a; --border-subtle: #1e1e22;
+      --text: #fafafa; --text-muted: #a1a1aa; --text-dim: #71717a;
+      --accent: #a78bfa; --accent-strong: #8b5cf6; --accent-glow: rgba(139, 92, 246, 0.16);
+      --cyan: #22d3ee; --green: #10b981; --red: #ef4444; --amber: #f59e0b; --radius: 12px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif; background: var(--bg);
+      color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased;
+    }
+    code, .mono { font-family: 'JetBrains Mono', monospace; }
+    a { color: var(--accent); }
+
+    nav {
+      background: rgba(9, 9, 11, 0.8); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle); padding: 14px 24px;
+    }
+    .nav-inner { max-width: 960px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+    .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; color: var(--text); text-decoration: none; }
+    .nav-brand svg { width: 28px; height: 28px; }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    #user-info { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); }
+    #user-info img { width: 24px; height: 24px; border-radius: 50%; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 48px 24px; }
+    .page-title { font-size: 1.8rem; font-weight: 700; margin-bottom: 8px; }
+    .page-desc { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 32px; line-height: 1.55; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius); padding: 24px; margin-bottom: 20px;
+    }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+    .card-title { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .card-title .icon {
+      width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      background: var(--accent-glow); color: var(--accent);
+    }
+    .count { font-size: 0.75rem; color: var(--text-dim); font-weight: 500; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px;
+      font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s;
+      text-decoration: none; font-family: inherit;
+    }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+    .btn-accent { background: var(--accent-strong); color: #fff; }
+    .btn-accent:hover:not(:disabled) { background: var(--accent); color: #000; }
+    .btn-outline { background: none; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-outline:hover:not(:disabled) { color: var(--text); border-color: var(--text-dim); }
+    .btn-danger { background: none; border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+    .btn-danger:hover:not(:disabled) { background: rgba(239,68,68,0.1); }
+    .btn-small { padding: 5px 10px; font-size: 0.75rem; }
+    .btn-big { padding: 13px 26px; font-size: 0.95rem; border-radius: 10px; }
+
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tab {
+      background: none; border: 1px solid var(--border-subtle); color: var(--text-muted);
+      padding: 6px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 500; cursor: pointer; font-family: inherit;
+    }
+    .tab.active { background: var(--accent-glow); border-color: rgba(139,92,246,0.4); color: var(--text); }
+
+    .item { border: 1px solid var(--border-subtle); border-radius: 10px; padding: 16px 18px; margin-top: 12px; background: var(--bg); }
+    .item-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .item-name { font-weight: 600; font-size: 0.95rem; }
+    .pill {
+      font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 100px;
+      border: 1px solid var(--border); color: var(--text-muted);
+    }
+    .pill.version { color: var(--accent); border-color: rgba(139,92,246,0.35); }
+    .pill.folder { color: var(--cyan); border-color: rgba(34,211,238,0.3); }
+    .pill.private { color: var(--green); border-color: rgba(16,185,129,0.3); }
+    .pill.public { color: var(--amber); border-color: rgba(245,158,11,0.35); }
+    .pill.warn { color: var(--amber); border-color: rgba(245,158,11,0.35); }
+    .item-summary { color: var(--text-muted); font-size: 0.86rem; margin: 8px 0 6px; line-height: 1.5; }
+    .item-meta { color: var(--text-dim); font-size: 0.78rem; }
+    .item-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+
+    .access { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+    .person { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 0.85rem; }
+    .person img { width: 20px; height: 20px; border-radius: 50%; vertical-align: middle; margin-right: 8px; }
+    .person .role { color: var(--text-dim); font-size: 0.75rem; margin-left: 6px; }
+    .share-form { display: flex; gap: 8px; margin-top: 10px; }
+    input[type=text] {
+      flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); padding: 8px 12px; font-size: 0.85rem; font-family: inherit; min-width: 0;
+    }
+    input[type=text]:focus { outline: none; border-color: var(--accent-strong); }
+
+    .cmd {
+      display: flex; align-items: center; gap: 8px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px; padding: 3px 3px 3px 12px; margin-top: 10px;
+    }
+    .cmd code { flex: 1; font-size: 0.78rem; color: var(--accent); white-space: nowrap; overflow-x: auto; padding: 6px 0; }
+    .cmd-block {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted); line-height: 1.85; overflow-x: auto;
+      white-space: pre;
+    }
+    .cmd-block .cm { color: var(--text-dim); }
+
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap; }
+    .row:last-child { border-bottom: none; }
+    .row-main { font-size: 0.88rem; }
+    .row-sub { font-size: 0.76rem; color: var(--text-dim); margin-top: 3px; }
+    .owner-title { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 18px; }
+    .empty { color: var(--text-dim); font-size: 0.88rem; line-height: 1.6; }
+    .empty code { color: var(--accent); }
+
+    .banner { border-radius: 10px; padding: 12px 16px; font-size: 0.85rem; margin-bottom: 20px; display: none; }
+    .banner.error { display: block; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .banner.ok { display: block; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+
+    .loading { text-align: center; padding: 60px 0; color: var(--text-dim); font-size: 0.9rem; }
+    .spinner {
+      width: 32px; height: 32px; margin: 0 auto 16px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .signin { text-align: center; padding: 60px 20px; }
+    .signin p { color: var(--text-muted); max-width: 520px; margin: 0 auto 28px; line-height: 1.6; font-size: 0.95rem; }
+    .signin .fine { font-size: 0.78rem; color: var(--text-dim); margin-top: 22px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">
+        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="28" height="28" rx="6" fill="#8b5cf6" fill-opacity="0.2"/>
+          <rect x="7" y="7" width="14" height="3.5" rx="1.75" fill="#a78bfa"/>
+          <rect x="7" y="12.25" width="14" height="3.5" rx="1.75" fill="#22d3ee"/>
+          <rect x="7" y="17.5" width="9" height="3.5" rx="1.75" fill="#a78bfa"/>
+        </svg>
+        skylls
+      </a>
+      <div class="nav-right">
+        <span id="user-info"></span>
+        <button id="sign-out" class="btn btn-outline btn-small" hidden>Sign out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div id="banner" class="banner"></div>
+
+    <div id="loading" class="loading"><div class="spinner"></div>Loading…</div>
+
+    <div id="signed-out" hidden>
+      <div class="signin">
+        <h1 class="page-title">Your skylls dashboard</h1>
+        <p>See your skills, agents and swarms, choose who can see each one, accept what friends share with you and answer suggestions.</p>
+        <a class="btn btn-accent btn-big" href="/api/auth/login">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Sign in with GitHub
+        </a>
+        <p class="fine">GitHub asks for access to your repositories so the dashboard can read your private skylls repos and manage who they're shared with. Your token stays encrypted on the server side and is never shown in the page.</p>
+      </div>
+    </div>
+
+    <div id="signed-in" hidden>
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-desc">Everything you publish with skylls lives in its own private GitHub repo. Choose who can see each one.</p>
+
+      <div id="invites-card" class="card" hidden>
+        <div class="card-header">
+          <div class="card-title"><div class="icon">✉</div>Shared with you, waiting</div>
+        </div>
+        <div id="invites"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" stroke-width="1.3"/></svg>
+          </div>Yours</div>
+          <div class="tabs" id="tabs"></div>
+        </div>
+        <div id="mine"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="icon">💬</div>Open suggestions <span class="count" id="sugg-count"></span></div>
+        </div>
+        <div id="suggestions"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><circle cx="11.5" cy="4" r="2" stroke="currentColor" stroke-width="1.3"/><circle cx="11.5" cy="12" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M6.8 7.1l3-1.9M6.8 8.9l3 1.9" stroke="currentColor" stroke-width="1.3"/></svg>
+          </div>Shared with you</div>
+        </div>
+        <div id="shared"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title"><div class="icon">⌘</div>Quick reference</div></div>
+        <div class="cmd-block"><span class="cm"># publish (each item → its own private repo)</span>
+skylls push &lt;skill&gt; -m "what changed"      <span class="cm"># also: skylls agents push / swarms push</span>
+<span class="cm"># share one item / see what friends shared</span>
+skylls share &lt;skill&gt; @friend
+skylls source add &lt;friend&gt;
+<span class="cm"># install</span>
+skylls add &lt;skill&gt; -g -a all                <span class="cm"># Claude Code, Codex and Gemini</span>
+skylls agents add &lt;agent&gt; --from &lt;owner&gt;    <span class="cm"># → ~/agents/&lt;agent&gt;</span>
+skylls pull --update                        <span class="cm"># newer versions</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const KIND_LABEL = { skills: "Skills", agents: "Agents", swarms: "Swarms" };
+    const state = { items: [], invites: [], login: "", tab: "skills" };
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    function banner(message, kind = "error") {
+      const el = $("banner");
+      el.className = "banner " + kind;
+      el.textContent = message;
+      if (kind === "ok") setTimeout(() => (el.className = "banner"), 4000);
+    }
+
+    async function api(path, payload) {
+      const res = await fetch(path, payload === undefined ? { credentials: "same-origin" } : {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-Skylls": "1" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || `Request failed (${res.status})`);
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    function installCommand(item) {
+      const from = item.mine ? "" : ` --from ${item.owner}`;
+      return item.kind === "skills" ? `skylls add ${item.name}${from} -g -a all` : `skylls ${item.kind} add ${item.name}${from}`;
+    }
+
+    function copyButton(text) {
+      return `<button class="btn btn-outline btn-small" data-copy="${esc(text)}">Copy</button>`;
+    }
+
+    function pills(item) {
+      return [
+        item.version ? `<span class="pill version">v${esc(item.version)}</span>` : `<span class="pill warn">no version yet</span>`,
+        item.folder ? `<span class="pill folder">${esc(item.folder)}</span>` : "",
+        item.private ? `<span class="pill private">private</span>` : `<span class="pill public">public</span>`,
+      ].join(" ");
+    }
+
+    function renderTabs() {
+      const mine = state.items.filter((i) => i.mine);
+      $("tabs").innerHTML = Object.entries(KIND_LABEL).map(([kind, label]) => {
+        const n = mine.filter((i) => i.kind === kind).length;
+        return `<button class="tab ${state.tab === kind ? "active" : ""}" data-tab="${kind}">${label} <span class="count">${n}</span></button>`;
+      }).join("");
+    }
+
+    function renderMine() {
+      const items = state.items.filter((i) => i.mine && i.kind === state.tab);
+      if (!items.length) {
+        const cmd = state.tab === "skills" ? "skylls push <skill>" : `skylls ${state.tab} push <name>`;
+        $("mine").innerHTML = `<p class="empty">No ${esc(KIND_LABEL[state.tab].toLowerCase())} published yet. Publish one with <code>${esc(cmd)}</code>.</p>`;
+        return;
+      }
+      $("mine").innerHTML = items.map((item) => `
+        <div class="item" data-repo="${esc(item.repo)}">
+          <div class="item-head"><span class="item-name">${esc(item.name)}</span>${pills(item)}</div>
+          ${item.summary ? `<div class="item-summary">${esc(item.summary)}</div>` : ""}
+          <div class="item-meta">${esc(item.repo)}${item.updated ? ` · updated ${esc(item.updated)}` : ""}${item.suggestions.length ? ` · ${item.suggestions.length} open suggestion${item.suggestions.length > 1 ? "s" : ""}` : ""}</div>
+          <div class="item-actions">
+            <button class="btn btn-outline btn-small" data-access="${esc(item.repo)}">Who can see it</button>
+            <a class="btn btn-outline btn-small" href="${esc(item.url)}" target="_blank" rel="noopener">GitHub ↗</a>
+          </div>
+          <div class="access" data-panel="${esc(item.repo)}" hidden></div>
+        </div>`).join("");
+    }
+
+    async function showAccess(repo, panel) {
+      panel.hidden = false;
+      panel.innerHTML = `<div class="item-meta">Loading…</div>`;
+      try {
+        const data = await api(`/api/access?repo=${encodeURIComponent(repo)}`);
+        const people = data.people.map((p) => `
+          <div class="person"><span>${p.avatar ? `<img src="${esc(p.avatar)}" alt="">` : ""}@${esc(p.login)}<span class="role">${esc(p.role || "")}</span></span>
+          <button class="btn btn-danger btn-small" data-unshare="${esc(repo)}" data-user="${esc(p.login)}">Remove</button></div>`).join("");
+        const pending = data.pending.map((p) => `
+          <div class="person"><span>@${esc(p.login)}<span class="role">invite pending</span></span>
+          <button class="btn btn-danger btn-small" data-unshare="${esc(repo)}" data-user="${esc(p.login)}">Cancel</button></div>`).join("");
+        panel.innerHTML = (people || pending ? people + pending : `<div class="item-meta">Only you. Nobody else can see it yet.</div>`) + `
+          <form class="share-form" data-share="${esc(repo)}">
+            <input type="text" name="user" placeholder="@github-user" autocomplete="off" required>
+            <button class="btn btn-accent btn-small" type="submit">Share</button>
+          </form>`;
+      } catch (err) {
+        panel.innerHTML = `<div class="item-meta">${esc(err.message)}</div>`;
+      }
+    }
+
+    function renderSuggestions() {
+      const rows = state.items.filter((i) => i.mine).flatMap((i) => i.suggestions.map((s) => ({ ...s, item: i })));
+      $("sugg-count").textContent = rows.length ? `(${rows.length})` : "";
+      if (!rows.length) {
+        const owner = state.items.find((i) => i.mine)?.owner || state.login;
+        $("suggestions").innerHTML = `<p class="empty">No open suggestions. Friends send them with <code>skylls suggest &lt;name&gt; --from ${esc(owner)} "idea"</code>.</p>`;
+        return;
+      }
+      $("suggestions").innerHTML = rows.map((s) => `
+        <div class="row">
+          <div><div class="row-main"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.item.name)}#${s.number}</a> ${esc(s.title)}</div>
+          <div class="row-sub">by @${esc(s.by)} on ${esc(s.date)}</div></div>
+          <form class="share-form" style="margin:0" data-answer="${esc(s.item.repo)}" data-number="${s.number}">
+            <input type="text" name="note" placeholder="Note (optional)" autocomplete="off">
+            <button class="btn btn-accent btn-small" type="submit" name="accept" value="1">Accept</button>
+            <button class="btn btn-outline btn-small" type="submit" name="accept" value="0">Decline</button>
+          </form>
+        </div>`).join("");
+    }
+
+    function renderShared() {
+      const others = state.items.filter((i) => !i.mine);
+      if (!others.length) {
+        $("shared").innerHTML = `<p class="empty">Nothing yet. When a friend shares with you, accept it above (or run <code>skylls source add &lt;friend&gt;</code>).</p>`;
+        return;
+      }
+      const owners = [...new Set(others.map((i) => i.owner))];
+      $("shared").innerHTML = owners.map((owner) => `
+        <div class="owner-title">From ${esc(owner)}</div>` + others.filter((i) => i.owner === owner).map((item) => `
+        <div class="item">
+          <div class="item-head"><span class="item-name">${esc(item.name)}</span><span class="pill">${esc(item.kind.slice(0, -1))}</span>${pills(item)}</div>
+          ${item.summary ? `<div class="item-summary">${esc(item.summary)}</div>` : ""}
+          <div class="cmd"><code>${esc(installCommand(item))}</code>${copyButton(installCommand(item))}</div>
+        </div>`).join("")).join("");
+    }
+
+    function renderInvites() {
+      $("invites-card").hidden = !state.invites.length;
+      $("invites").innerHTML = state.invites.map((inv) => `
+        <div class="row">
+          <div><div class="row-main">@${esc(inv.from || inv.owner)} shared the ${esc(inv.kind.slice(0, -1))} <strong>${esc(inv.name)}</strong></div>
+          <div class="row-sub">${esc(inv.repo)}</div></div>
+          <button class="btn btn-accent btn-small" data-invite="${inv.id}">Accept</button>
+        </div>`).join("");
+    }
+
+    function render() {
+      renderTabs();
+      renderMine();
+      renderSuggestions();
+      renderShared();
+      renderInvites();
+    }
+
+    async function load() {
+      const data = await api("/api/items");
+      Object.assign(state, { items: data.items, invites: data.invites, login: data.login });
+      render();
+    }
+
+    document.addEventListener("click", async (event) => {
+      const t = event.target.closest("button, [data-copy]");
+      if (!t) return;
+      if (t.dataset.tab) {
+        state.tab = t.dataset.tab;
+        renderTabs();
+        renderMine();
+      } else if (t.dataset.copy) {
+        navigator.clipboard.writeText(t.dataset.copy).then(() => {
+          t.textContent = "Copied!";
+          setTimeout(() => (t.textContent = "Copy"), 1800);
+        }).catch(() => {});
+      } else if (t.dataset.access) {
+        const panel = document.querySelector(`[data-panel="${CSS.escape(t.dataset.access)}"]`);
+        if (!panel.hidden) { panel.hidden = true; return; }
+        showAccess(t.dataset.access, panel);
+      } else if (t.dataset.unshare) {
+        if (!confirm(`Remove @${t.dataset.user}'s access to ${t.dataset.unshare}? Copies they installed stay on their machine.`)) return;
+        t.disabled = true;
+        try {
+          await api("/api/unshare", { repo: t.dataset.unshare, user: t.dataset.user });
+          banner(`Removed @${t.dataset.user}.`, "ok");
+          showAccess(t.dataset.unshare, t.closest("[data-panel]"));
+        } catch (err) { banner(err.message); t.disabled = false; }
+      } else if (t.dataset.invite) {
+        t.disabled = true;
+        try {
+          const { accepted } = await api("/api/invite", { id: t.dataset.invite });
+          banner(`Accepted ${accepted.name} from ${accepted.owner}.`, "ok");
+          await load();
+        } catch (err) { banner(err.message); t.disabled = false; }
+      }
+    });
+
+    document.addEventListener("submit", async (event) => {
+      const form = event.target;
+      event.preventDefault();
+      const button = event.submitter || form.querySelector("button");
+      button.disabled = true;
+      try {
+        if (form.dataset.share) {
+          const user = form.user.value.trim();
+          const res = await api("/api/share", { repo: form.dataset.share, user });
+          banner(res.invited ? `Invited @${res.login} (${res.access}). They add you once with: skylls source add ${state.login}` : `@${res.login} already has ${res.access}.`, "ok");
+          showAccess(form.dataset.share, form.closest("[data-panel]"));
+        } else if (form.dataset.answer) {
+          const accept = button.value === "1";
+          await api("/api/suggestion", { repo: form.dataset.answer, number: Number(form.dataset.number), accept, note: form.note.value });
+          banner(accept ? "Accepted: marked as done." : "Declined: closed as not planned.", "ok");
+          await load();
+        }
+      } catch (err) {
+        banner(err.message);
+        button.disabled = false;
+      }
+    });
+
+    $("sign-out").addEventListener("click", async () => {
+      await api("/api/auth/logout", {}).catch(() => {});
+      location.href = "/";
+    });
+
+    (async () => {
+      const params = new URLSearchParams(location.search);
+      if (params.get("error")) banner(params.get("error"));
+      if (params.toString()) history.replaceState(null, "", "/dashboard");
+      try {
+        const me = await api("/api/me");
+        $("user-info").innerHTML = `${me.avatar ? `<img src="${esc(me.avatar)}" alt="">` : ""}@${esc(me.login)}`;
+        $("sign-out").hidden = false;
+        await load();
+        $("loading").hidden = true;
+        $("signed-in").hidden = false;
+      } catch (err) {
+        $("loading").hidden = true;
+        if (err.status === 401) $("signed-out").hidden = false;
+        else { banner(err.message); $("signed-out").hidden = false; }
+      }
+    })();
+  </script>
+</body>
+</html>

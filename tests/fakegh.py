@@ -83,7 +83,9 @@ if args[:1] == ["api"]:
     elif path == "graphql":
         query = next(a for a in args if a.startswith("query="))[6:]
         if "viewer" in query:
-            nodes = [{"name": f.split("/")[1], "owner": {"login": f.split("/")[0]}} for f in state["repos"] if can_see(f)]
+            orgs_too = re.search(r"ownerAffiliations:[^)]*ORGANIZATION_MEMBER", query)  # GitHub's default leaves org repos out
+            nodes = [{"name": f.split("/")[1], "owner": {"login": f.split("/")[0]}} for f in state["repos"]
+                     if can_see(f) and (orgs_too or f.split("/")[0] not in state["orgs"])]
             out({"data": {"viewer": {"repositories": {"nodes": nodes, "pageInfo": {"hasNextPage": False, "endCursor": None}}}}})
         else:
             data = {}
