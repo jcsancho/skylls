@@ -1,6 +1,6 @@
 [project]
 name = "skylls"
-version = "0.1.0"
+dynamic = ["version"]  # from skylls/__init__.py: __version__
 description = "Share agent skills, agents and swarms (Claude Code, Codex, Gemini) through your own private GitHub repos"
 readme = "README.md"
 license = "Apache-2.0"
@@ -20,3 +20,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["skylls*"]
+
+[tool.setuptools.package-data]
+skylls = ["skills/*/SKILL.md"]
+
+[tool.setuptools.dynamic]
+version = {attr = "skylls.__version__"}

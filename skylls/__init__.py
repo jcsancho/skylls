@@ -1,5 +1,7 @@
-"""skylls - manage agent skills from a shared GitHub repository."""
+"""skylls - share agent skills, agents and swarms through your own private GitHub repos."""
 
-from skylls.cli import main
+__version__ = "1.1.0"  # bump on every change to the tool (see CHANGES.md)
 
-__all__ = ["main"]
+from skylls.cli import main  # noqa: E402  (after __version__: cli imports it)
+
+__all__ = ["main", "__version__"]
