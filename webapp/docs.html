@@ -6,6 +6,7 @@
   <title>Docs — skylls</title>
   <meta name="description" content="How to use skylls: install, set up, publish, share and install skills, agents and swarms for Claude Code, Codex and Gemini, and the dashboard.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='6' fill='%238b5cf6' fill-opacity='.2'/%3E%3Crect x='7' y='7' width='14' height='3.5' rx='1.75' fill='%23a78bfa'/%3E%3Crect x='7' y='12.25' width='14' height='3.5' rx='1.75' fill='%2322d3ee'/%3E%3Crect x='7' y='17.5' width='9' height='3.5' rx='1.75' fill='%23a78bfa'/%3E%3C/svg%3E">
+  <link rel="alternate" type="text/markdown" href="/llms.txt" title="skylls for LLMs">
   <script src="/consent.js"></script>
   <style>
     :root {
@@ -191,6 +192,7 @@
   <div class="layout">
     <aside class="toc" aria-label="On this page">
       <p>Getting started</p>
+      <a href="#for-llms">For LLMs</a>
       <a href="#overview">Overview</a>
       <a href="#install">Install</a>
       <a href="#setup">Setup</a>
@@ -227,6 +229,27 @@
         <a href="#quick-start"><strong>Quick start</strong><span>Publish, share and install in four commands.</span></a>
         <a href="#reference"><strong>Command reference</strong><span>Every command and flag on one table.</span></a>
       </div>
+
+      <!-- For LLMs -->
+      <section id="for-llms">
+        <h2><a href="#for-llms">For LLMs</a></h2>
+        <p>Are you an AI agent? Read <a href="/llms.txt"><code>skylls.dev/llms.txt</code></a>: the whole guide as plain Markdown, written for agents. Then install the skylls skill so your agent CLI knows how to use skylls (<a href="/skill.md">raw skill</a>).</p>
+        <h3>1. Install the skylls skill</h3>
+<pre><code>skylls agent-skill -g -a all                     <span class="cm"># Claude Code, Codex and Gemini, global</span>
+skylls add jcsancho/skylls/skylls -g -a all      <span class="cm"># or straight from the public GitHub repo</span></code></pre>
+        <p>No skylls yet? <code>npm install -g @jcsancho/skylls</code>, then <code>skylls setup</code> (see <a href="#install">Install</a>).</p>
+        <h3>2. Skills</h3>
+        <p><strong>Share</strong>: a skill is a whole capability (its <code>SKILL.md</code> recipe plus its scripts and files), published to its own private repo, so everyone you share it with runs the same skill, maintained in one place:</p>
+<pre><code>skylls push pdf -m "First version"     <span class="cm"># ~/.claude/skills/pdf → &lt;org&gt;/skill-pdf (private)</span>
+skylls share pdf @bob                  <span class="cm"># one skill to one friend (--all @bob for everything)</span></code></pre>
+        <p><strong>Use</strong>: find what you and your friends published and pull it into your agent:</p>
+<pre><code>skylls source add alice                <span class="cm"># once: see what alice shared with you</span>
+skylls find pdf --json --limit 5       <span class="cm"># search, compact output for agents</span>
+skylls add pdf -g -a all               <span class="cm"># writes into ~/.claude/skills, ~/.agents/skills, ~/.gemini/skills (no -g: this project)</span></code></pre>
+        <div class="note">
+          <p><strong>Agents ask first.</strong> The skill tells agents to install freely when you ask for a capability, but never to publish, share or remove anything without your go-ahead.</p>
+        </div>
+      </section>
 
       <!-- Overview -->
       <section id="overview">
@@ -587,6 +610,7 @@ skylls add anthropics/skills/pdf -g        <span class="cm"># install straight f
       <a href="https://github.com/jcsancho/skylls" target="_blank" rel="noopener">GitHub</a>
       <a href="https://www.npmjs.com/package/@jcsancho/skylls" target="_blank" rel="noopener">npm</a>
       <a href="/docs">Docs</a>
+      <a href="/llms.txt">llms.txt</a>
       <a href="/dashboard">Dashboard</a>
       <a href="/privacy">Privacy</a>
       <a href="/terms">Terms</a>

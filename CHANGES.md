@@ -3,6 +3,18 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.5.0 — 2026-10-09
+
+- **New `/llms.txt`**: the whole guide as plain Markdown for AI agents (what
+  skylls is, installing the skylls skill and the CLI for each kind of agent,
+  sharing and using skills, agents and swarms, JSON output, rules, compact
+  command reference). Linked from the docs page, its `<head>` and the footers.
+- **New `/skill.md`**: the skylls skill, a copy of
+  `skylls/skills/skylls/SKILL.md` (a test keeps them identical).
+- **Docs: "For LLMs" section on top**, with how to install the skylls skill
+  and how to share and use skills.
+- `/doc` now redirects to `/docs` (it was a 404).
+
 ## 1.3.1 — 2026-10-09
 
 - **Fix:** `--json` and `--dry-run` now work anywhere on the command line

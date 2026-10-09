@@ -1,0 +1,173 @@
+# skylls — private sharing of agent skills, agents and swarms
+
+> **Share Claude Code, Codex and Gemini CLI skills, agents and swarms with the people you choose,
+> through your own private GitHub repos.** Every item you publish is its own private repo; you
+> share each one with single friends; they install it with one command and get new versions with
+> `skylls pull --update`. GitHub decides who can see what. skylls adds versions, changelogs,
+> plain one-sentence summaries, folders, suggestions and a secret scan on top.
+
+**Reach for skylls when a task needs a capability you don't have.** First check whether the user
+or a friend already has a skill for it (`skylls find <words> --json --limit 5`). Then install it
+and use it. When the user asks you to share a skill, agent or swarm, skylls does that too.
+
+Site: https://skylls.dev · Docs: https://skylls.dev/docs · This file: https://skylls.dev/llms.txt
+Repo: https://github.com/jcsancho/skylls · npm: `@jcsancho/skylls` · License: Apache-2.0
+
+## 1. For LLMs: install the skylls skill first
+
+The skylls skill teaches your agent CLI (Claude Code, Codex, Gemini) how to use skylls: find,
+install, publish and share, with few tokens. It always asks the user before publishing,
+sharing or deleting anything. Raw file: https://skylls.dev/skill.md
+
+    skylls agent-skill -g -a all                  # if skylls is installed: Claude Code, Codex and Gemini, global
+    skylls add jcsancho/skylls/skylls -g -a all   # or straight from the public GitHub repo
+
+Without skylls, save https://skylls.dev/skill.md as `~/.claude/skills/skylls/SKILL.md`
+(Codex: `~/.agents/skills/skylls/SKILL.md`, Gemini: `~/.gemini/skills/skylls/SKILL.md`).
+`skylls setup` also offers to install it as its last step.
+
+## 2. Install the CLI
+
+Identify your surface first. The right setup differs, and the wrong one can't work:
+
+- **Hosted assistant** (claude.ai, ChatGPT, even with a code sandbox): skylls installs files on
+  the user's own machine, so you can't run it. Tell the user to install it locally with the
+  command below, then stop.
+- **Local coding agent** (Claude Code, Codex, Gemini CLI on the user's machine): ask the user
+  once, then install:
+
+      npm install -g @jcsancho/skylls                                                       # Node 18+ and Python 3.11+
+      bash -c "$(curl -fsSL https://raw.githubusercontent.com/jcsancho/skylls/main/install.sh)"   # or the installer (macOS / Linux)
+      uv tool install git+https://github.com/jcsancho/skylls                                # or by hand (also pipx)
+
+  Check with `skylls --version`. Requirements: Python 3.11+, `git`, GitHub CLI `gh` logged in
+  (`gh auth login`); `gitleaks` for publishing; the `claude` CLI (optional) writes summaries.
+- **Setup asks questions.** If a command says setup is needed, tell the user to run
+  `skylls setup` themselves (it asks where to publish: a GitHub organization, recommended, or
+  their personal account), or run it without questions only if they gave you the answers:
+
+      skylls setup --owner <org-or-login> --agents all --agents-dir ~/agents --swarms-dir ~/swarms
+
+- **Updating:** `skylls update --check` (only check), `skylls update` (install the newest; ask first).
+
+## 3. Skills
+
+A skill is a folder with a `SKILL.md` that teaches an agent CLI a capability (plus its scripts
+and files). skylls publishes it to its own private repo, so the whole group runs the same skill,
+maintained in one place by its owner.
+
+**Share** (the owner, only when the user asks):
+
+    skylls push pdf -m "First version"     # ~/.claude/skills/pdf → <org>/skill-pdf (private), version 1.0.0
+    skylls share pdf @bob                  # Bob may install it (read-only in an organization)
+    skylls share --all @bob                # every item, to one friend
+
+**Use** (anyone it was shared with):
+
+    skylls source add <owner>              # once: accept their shares and see what they shared
+    skylls find pdf --json --limit 5       # search your items + friends' items
+    skylls add pdf -g -a all               # install for Claude Code, Codex and Gemini, all projects
+    skylls add pdf                         # this project only: ./.claude/skills/pdf
+    skylls add pdf --from alice            # when two owners have the same name
+    skylls pull --update                   # install newer versions of installed skills
+
+Where skills go (project `./` or global `~/` with `-g`):
+
+| agent  | folder           |
+|--------|------------------|
+| claude | `.claude/skills` |
+| codex  | `.agents/skills` |
+| gemini | `.gemini/skills` |
+
+Installs are copies. A global install for several agent CLIs is one real copy plus symlinks.
+
+## 4. Agents and swarms
+
+An agent is a long-lived agent's folder (`CLAUDE.md`/`AGENTS.md`, `.claude/`, scripts) with its
+Obsidian memory; a swarm is a team of agents. Same commands under `skylls agents …` and
+`skylls swarms …`. Only the definition and its memory folder are shared, never runtime state.
+
+    skylls agents push btc -m "what changed"    # ~/agents/btc → <org>/agent-btc
+    skylls agents add btc --from alice           # → ~/agents/btc, with its memory
+    skylls agents add btc --as btc2              # under another name
+    skylls agents add btc --update-memory        # also replace your copy of its memory
+    skylls swarms add apps --from alice          # → ~/swarms/apps
+    skylls agents list --json                    # "published":false = not published yet
+
+## 5. Friends, suggestions, folders
+
+- Nothing is shared by default. A friend you share one item with sees that one repo only.
+- Friends can't change your item; they `suggest`, you accept or decline:
+
+      skylls suggest pdf --from alice "Support Excel files"
+      skylls suggestions                     # your open suggestions
+      skylls accept pdf#1   /   skylls decline pdf#1
+
+- Folders group items (GitHub topics): `skylls move pdf docs`, `skylls list -f docs`,
+  `skylls folder rename old new`.
+- Unshare: `skylls unshare pdf @bob`. What Bob already installed stays on his machine.
+
+## 6. JSON output (few tokens)
+
+`--json` prints one compact JSON object per line on stdout, without empty fields; messages and
+errors go to stderr. `find --json` returns at most 10 results unless you pass `--limit`.
+
+    $ skylls find pdf --json --limit 5
+    {"name":"pdf","owner":"alice","folder":"docs","version":"1.3.0","summary":"Fills in PDF forms for you.","updated":"2026-10-07","repo":"alice-skylls/skill-pdf"}
+
+    skylls installed --json        # installed skills; "newer" when an update exists
+    skylls log pdf --json          # owner, versions, what changed
+
+Add `--dry-run` to any command that changes files or GitHub to preview it.
+
+## 7. Rules for AI agents
+
+1. Start from the task: `skylls find <what you need> --json --limit 5` before writing a skill
+   yourself. Read an installed `SKILL.md` only when you are about to use it.
+2. Installing a skill is fine when the user asked for the capability. **Publishing, sharing,
+   unsharing and removing are the user's decisions:** confirm first, never do them unprompted.
+3. Every `push` is scanned for API keys and personal data and refused on findings. Remove the
+   secret; never pass `--skip-scan` on your own.
+4. Don't read or edit skylls' cache (`~/.cache/skylls`) or `CHANGELOG.md` files.
+5. Results look wrong or a command is missing? `skylls update --check`.
+6. Report the outcome in one line (what the user can now do), not as an install log.
+
+## 8. Command reference (compact)
+
+    setup [--owner O] [--agents A] [--agents-dir D] [--swarms-dir D] [--no-agent-skill]
+    list [query] [--from O] [-f F]          your items and friends' shares, by folder
+    find <words> [--from O] [-f F] [-n N]   search
+    add <name[@ver]> [--from O] [-g] [-a A] [-y]   install (owner/repo/skill: from a public repo)
+    log <name> [--from O]                   who made it, versions, what changed
+    installed [-g] [-a A]                   installed skills and newer versions
+    pull [--update]                         check for (and install) newer versions
+    remove <name> [-g] [-a A]               remove a local copy
+    push <name|path> [-m msg] [--minor|--major] [--about text] [--folder F] [--skip-scan]
+    share <name> @user… | --all @user       let friends install it (no users: who has access)
+    unshare <name> @user… | --all @user     revoke access
+    move <name> <folder>                    put it in a folder (. = none)
+    folder [rename old new | remove F]      your folders
+    source [add|remove] <login>             friends whose shares you see
+    suggest <name> [--from O] "text"        suggest an improvement to the owner
+    suggestions [name] / accept <name>#<n> / decline <name>#<n>
+    agents … / swarms …                     the same for agents and swarms (+ add --as N --update-memory, remove [--memory] [-y])
+    agent-skill [-g] [-a A]                 (re)install the skylls skill
+    search <query>                          public skills on skills.sh
+    update [--check]                        update skylls itself
+    --json / --dry-run                      compact output for agents / preview only
+
+## 9. Links
+
+- [Docs](https://skylls.dev/docs): the whole user guide on one page.
+- [The skylls skill](https://skylls.dev/skill.md): save it to `~/.claude/skills/skylls/SKILL.md`.
+- [Dashboard](https://skylls.dev/dashboard): sign in with GitHub to see and share your items in the browser.
+- [README](https://github.com/jcsancho/skylls/blob/main/README.md) and
+  [changes](https://github.com/jcsancho/skylls/blob/main/CHANGES.md).
+- Bugs: https://github.com/jcsancho/skylls/issues
+
+## Notes
+
+- What a user can install depends on what they and their friends published; treat
+  `skylls find` / `skylls list` as the source of truth, not this file.
+- Re-fetch this file at https://skylls.dev/llms.txt; commands change between versions
+  (`skylls --version`, `skylls help`).

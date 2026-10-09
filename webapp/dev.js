@@ -10,7 +10,12 @@ const PAGES = {
   "/": "index.html", "/index": "index.html", "/dashboard": "dashboard.html",
   "/docs": "docs.html", "/privacy": "privacy.html", "/terms": "terms.html", "/cookies": "cookies.html",
 };
-const ASSETS = { "/consent.js": "text/javascript; charset=utf-8" };
+const ASSETS = {
+  "/consent.js": "text/javascript; charset=utf-8",
+  "/llms.txt": "text/markdown; charset=utf-8",
+  "/skill.md": "text/markdown; charset=utf-8",
+};
+const REDIRECTS = { "/doc": "/docs" };
 
 /** Route a Web Request the way Vercel does for this project. */
 export async function app(request) {
@@ -23,6 +28,7 @@ export async function app(request) {
     const handler = (await import(pathToFileURL(file).href))[request.method];
     return handler ? handler(request) : Response.json({ error: "Method not allowed" }, { status: 405 });
   }
+  if (REDIRECTS[pathname]) return new Response(null, { status: 308, headers: { Location: REDIRECTS[pathname] } });
   if (ASSETS[pathname]) {
     return new Response(await readFile(join(ROOT, pathname)), { headers: { "Content-Type": ASSETS[pathname] } });
   }

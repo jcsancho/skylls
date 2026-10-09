@@ -216,6 +216,24 @@ test("docs page", async () => {
   assert.match(res.data, /id="reference"/);
 });
 
+test("docs for LLMs: llms.txt, skill.md (same as the CLI's skill), /doc redirect", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const llms = await call("/llms.txt");
+  assert.equal(llms.status, 200);
+  assert.match(llms.headers.get("content-type"), /text\/markdown/);
+  assert.match(llms.data, /^# skylls/);
+  assert.match(llms.data, /skylls agent-skill -g -a all/);
+  const skill = await call("/skill.md");
+  const cli = await readFile(new URL("../../skylls/skills/skylls/SKILL.md", import.meta.url), "utf8");
+  assert.equal(skill.data, cli, "webapp/skill.md must be a copy of skylls/skills/skylls/SKILL.md");
+  const docs = (await call("/docs")).data;
+  assert.match(docs, /id="for-llms"/);
+  assert.match(docs, /href="\/llms\.txt"/);
+  const doc = await app(new Request("http://localhost/doc"));
+  assert.equal(doc.status, 308);
+  assert.equal(doc.headers.get("location"), "/docs");
+});
+
 test("privacy and terms pages", async () => {
   assert.match((await call("/privacy")).data, /has no database and doesn't store your data/);
   assert.match((await call("/terms")).data, /Apache License 2\.0/);

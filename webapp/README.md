@@ -4,7 +4,9 @@ The skylls website and dashboard, deployed on Vercel.
 
 - **`/`** is the landing page: what skylls is, how to install it, and how it works.
 - **`/docs`**: the user guide (install, setup, publish, share, agents and swarms,
-  the dashboard, command reference, FAQ).
+  the dashboard, command reference, FAQ). `/doc` redirects here.
+- **`/llms.txt`**: the same guide as Markdown for AI agents; **`/skill.md`**:
+  the skylls skill (a copy of `skylls/skills/skylls/SKILL.md`; a test checks it).
 - **`/dashboard`**: sign in with GitHub to see your skills, agents and swarms.
   - **Your items:** version, folder and summary, plus who can see each one.
     Share it with a GitHub user, or remove someone.
@@ -31,6 +33,7 @@ same logic as the CLI (`../skylls/kinds.py`).
 | file | what |
 |---|---|
 | `index.html`, `docs.html`, `dashboard.html`, `privacy.html`, `terms.html`, `cookies.html` | the pages |
+| `llms.txt`, `skill.md` | the guide for AI agents; the skylls skill (copy it from `../skylls/skills/skylls/SKILL.md` when that changes) |
 | `consent.js` | cookie banner + settings; loads Google Fonts only after consent |
 | `api/auth/login.js`, `callback.js`, `logout.js` | sign-in with GitHub |
 | `api/me.js`, `items.js`, `access.js` | who you are; your and your friends' items + invitations; who can see an item |

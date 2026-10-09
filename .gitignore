@@ -235,3 +235,4 @@ pids/
 # Personal Claude Code files: kept local, never published with the public tool
 CLAUDE.md
 .claude/
+.vercel
