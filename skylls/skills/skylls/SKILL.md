@@ -43,6 +43,6 @@ Read an installed SKILL.md only when you are about to use it.
 - Sharing access and removing things are the user's decisions; never do them unprompted.
 
 ## Rules
-- Prefer `--json` and `--limit`; add `--dry-run` before a command to preview it.
+- Prefer `--json` and `--limit`; add `--dry-run` to a command to preview it.
 - Don't read or edit skylls' cache (~/.cache/skylls) or CHANGELOG.md files; skylls manages them.
 - Don't install, publish, share or delete without the user's go-ahead.

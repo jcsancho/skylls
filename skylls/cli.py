@@ -689,6 +689,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     global JSON_MODE
     from skylls import kinds
     parser = build_parser()
+    # --json and --dry-run are global but may be written anywhere (`skylls find pdf --json`):
+    # move them in front of the command, where argparse expects them.
+    argv = list(sys.argv[1:] if argv is None else argv)
+    end = argv.index("--") if "--" in argv else len(argv)
+    flags = [a for a in argv[:end] if a in ("--json", "--dry-run")]
+    argv = flags + [a for a in argv[:end] if a not in flags] + argv[end:]
     args = parser.parse_args(argv)
     JSON_MODE = args.json
 

@@ -287,7 +287,7 @@ skylls search pdf                          # top matches with install counts
 skylls add anthropics/skills/pdf -g        # install straight from that public GitHub repo
 ```
 
-Add `--dry-run` before any command to see what it would do without changing anything.
+Add `--dry-run` to any command to see what it would do without changing anything.
 
 ## How it works
 
@@ -334,7 +334,7 @@ Add `--dry-run` before any command to see what it would do without changing anyt
 | `search <query>` | Public skills on skills.sh |
 | `version` / `--version` | The skylls version |
 | `update [--check]` | Update skylls itself to the newest version |
-| `--json` / `--dry-run` (before the command) | Compact output for agents / preview only |
+| `--json` / `--dry-run` (anywhere on the line) | Compact output for agents / preview only |
 
 ## Requirements
 

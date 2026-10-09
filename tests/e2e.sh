@@ -84,6 +84,10 @@ s agents remove btc -y | tail -1
 mkdir -p $T/home/dave/.config/skylls; echo '{"repo": "dave/skills", "agents": ["codex"], "kinds": {}}' > $T/home/dave/.config/skylls/config.json
 user dave; s list | grep -E "quick setup|published to" | head -2; python3 -c "import json;print('  migrated:', json.load(open('$HOME/.config/skylls/config.json')))"
 echo "--- all --json lines valid"; for c in "list" "find pdf" "installed" "agents list" "suggestions"; do user alice; sj $c | python3 -c "import sys,json;[json.loads(l) for l in sys.stdin if l.strip()];print('  ok:', '$c')"; done
+echo "--- --json / --dry-run after the command (as the skill writes them)"; user alice
+python3 -m skylls find pdf --json --limit 1 2>/dev/null | python3 -c "import sys,json;print('  ok: find pdf --json ->', json.loads(sys.stdin.readline())['name'])"
+python3 -m skylls agents list --json 2>/dev/null | python3 -c "import sys,json;[json.loads(l) for l in sys.stdin if l.strip()];print('  ok: agents list --json')"
+python3 -m skylls share pdf @carol --dry-run 2>&1 | grep -q "Would invite @carol" && echo "  ok: share --dry-run" || echo "  FAIL: share --dry-run"
 
 echo "######## update skylls itself (newest = highest tag of jcsancho/skylls)"; user alice
 git init --quiet --bare $GHROOT/jcsancho/skylls.git; R=$T/skylls-src; git init --quiet $R

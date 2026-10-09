@@ -3,6 +3,13 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.3.1 — 2026-10-09
+
+- **Fix:** `--json` and `--dry-run` now work anywhere on the command line
+  (`skylls find pdf --json`), as the README and the skylls skill show them.
+  Before, they were only accepted before the command, so agents following the
+  skill got "unrecognized arguments: --json".
+
 ## webapp 1.4.0 — 2026-10-09
 
 - **Cookie consent**: a banner (Accept all / Only necessary / Customize) and a
