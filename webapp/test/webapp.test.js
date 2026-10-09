@@ -219,6 +219,19 @@ test("docs page", async () => {
 test("privacy and terms pages", async () => {
   assert.match((await call("/privacy")).data, /has no database and doesn't store your data/);
   assert.match((await call("/terms")).data, /Apache License 2\.0/);
+  assert.match((await call("/cookies")).data, /skylls_session/);
+});
+
+test("cookie consent: every page loads consent.js and no Google Fonts before consent", async () => {
+  for (const page of ["/", "/docs", "/dashboard", "/privacy", "/terms", "/cookies"]) {
+    const html = (await call(page)).data;
+    assert.match(html, /<script src="\/consent\.js"><\/script>/, page);
+    assert.match(html, /data-cookie-settings/, page);
+    assert.doesNotMatch(html, /fonts\.googleapis\.com/, page);
+  }
+  const js = (await call("/consent.js")).data;
+  assert.match(js, /Accept all/);
+  assert.match(js, /Only necessary/);
 });
 
 test("Marketplace webhook: signature checked, events acknowledged", async () => {

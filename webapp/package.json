@@ -1,6 +1,6 @@
 {
   "name": "skylls-webapp",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "private": true,
   "description": "skylls website and dashboard (Vercel): landing page + sign in with GitHub to manage your shared skills, agents and swarms",
   "type": "module",

@@ -3,6 +3,20 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.4.0 — 2026-10-09
+
+- **Cookie consent**: a banner (Accept all / Only necessary / Customize) and a
+  settings panel on every page, with "Cookie settings" in each footer to
+  change the choice later. Google Fonts, the only optional thing the site
+  uses, now loads only after consent; without it the pages use system fonts.
+  The choice is kept in the browser for 12 months.
+- **New `/cookies` page** (cookie policy) listing each cookie, its purpose and
+  duration. The privacy policy now covers the controller, legal bases,
+  recipients, international transfers, retention, GDPR rights and
+  complaints, and names the controller (Jose Carlos Sancho Pitarch, Spain)
+  with a contact address, privacy@skylls.dev. The terms add who provides
+  skylls, Spanish governing law, third-party services and consumer rights.
+
 ## 1.3.0 and webapp 1.3.1 — 2026-10-08
 
 - **New `skylls update`**: updates skylls itself to the newest release, the

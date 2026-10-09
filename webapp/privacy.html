@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy — skylls</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='6' fill='%238b5cf6' fill-opacity='.2'/%3E%3Crect x='7' y='7' width='14' height='3.5' rx='1.75' fill='%23a78bfa'/%3E%3Crect x='7' y='12.25' width='14' height='3.5' rx='1.75' fill='%2322d3ee'/%3E%3Crect x='7' y='17.5' width='9' height='3.5' rx='1.75' fill='%23a78bfa'/%3E%3C/svg%3E">
+  <script src="/consent.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif; background: #09090b; color: #e4e4e7; margin: 0; -webkit-font-smoothing: antialiased; }
     main { max-width: 760px; margin: 0 auto; padding: 56px 24px 80px; line-height: 1.65; }
@@ -15,18 +16,27 @@
     code { color: #c4b5fd; font-size: 0.9em; }
     .muted { color: #71717a; font-size: 0.85rem; }
     .brand { color: #fafafa; text-decoration: none; font-weight: 700; }
+    footer { max-width: 760px; margin: 0 auto; padding: 0 24px 40px; font-size: 0.8rem; color: #71717a; }
+    footer a { color: #71717a; text-decoration: none; margin-right: 16px; }
+    footer a:hover { color: #a1a1aa; }
   </style>
 </head>
 <body>
 <main>
   <a class="brand" href="/">← skylls</a>
   <h1>Privacy policy</h1>
-  <p class="muted">Last updated: October 8, 2026</p>
+  <p class="muted">Last updated: October 9, 2026</p>
 
   <p>skylls is an open-source tool (<a href="https://github.com/jcsancho/skylls">github.com/jcsancho/skylls</a>) for sharing agent
     skills, agents and swarms through your own private GitHub repositories. This page explains what the skylls website and
-    dashboard at <code>skylls.dev</code> and the <code>skylls</code> command-line tool do with your data.
+    dashboard at <code>skylls.dev</code> and the <code>skylls</code> command-line tool do with your personal data, and the
+    rights you have under the EU General Data Protection Regulation (GDPR) and similar laws.
     In short: <strong>skylls has no database and doesn't store your data.</strong></p>
+
+  <h2>Who is responsible</h2>
+  <p>The data controller for <code>skylls.dev</code> is <strong>Jose Carlos Sancho Pitarch</strong>, Spain, maintainer of the
+    skylls project (<a href="https://github.com/jcsancho">@jcsancho on GitHub</a>). Email:
+    <a href="mailto:privacy@skylls.dev">privacy@skylls.dev</a>.</p>
 
   <h2>Signing in with GitHub</h2>
   <p>When you sign in, GitHub gives the dashboard an access token for your account with the <code>repo</code> and
@@ -39,17 +49,38 @@
   </ul>
   <p>It does not read or change any other repositories.</p>
 
-  <h2>What is stored, and where</h2>
+  <h2>What is processed, why, and on what legal basis</h2>
+  <ul>
+    <li><strong>Your GitHub login, avatar address and access token</strong> — to sign you in and run the dashboard you ask
+      for. Legal basis: performance of the service you request (GDPR art. 6(1)(b)).</li>
+    <li><strong>Request data</strong> (IP address, URL, time, browser) in the hosting provider's logs — to deliver the site
+      and keep it secure. Legal basis: legitimate interest in running a secure service (art. 6(1)(f)).</li>
+    <li><strong>Your IP address sent to Google Fonts</strong> — only if you accept "Functional" in the cookie settings.
+      Legal basis: your consent (art. 6(1)(a)), which you can withdraw at any time.</li>
+    <li><strong>GitHub Marketplace plan events</strong> (your GitHub login and plan name), if you install skylls from the
+      Marketplace — to acknowledge the event. Legal basis: performance of the service (art. 6(1)(b)).</li>
+  </ul>
+
+  <h2>What is stored, where, and for how long</h2>
   <ul>
     <li><strong>In your browser only:</strong> an encrypted, HttpOnly cookie with your GitHub access token, its renewal token,
-      your GitHub login and avatar address. It lasts up to 30 days. Signing out deletes it.</li>
+      your GitHub login and avatar address. It lasts up to 30 days. Signing out deletes it. Your cookie choice is kept in
+      your browser's local storage for 12 months. Details in the <a href="/cookies">cookie policy</a>.</li>
     <li><strong>On our side: nothing.</strong> There is no database and no user accounts.</li>
-    <li><strong>Hosting logs:</strong> the site runs on Vercel, which keeps standard request logs (such as IP address,
-      URL and time) under <a href="https://vercel.com/legal/privacy-policy">Vercel's privacy policy</a>. If you install
-      skylls from GitHub Marketplace, the plan event (your GitHub login and the plan name) appears in those logs.</li>
-    <li><strong>Fonts:</strong> pages load fonts from Google Fonts, so Google receives your IP address when you visit.</li>
+    <li><strong>Hosting logs:</strong> the site runs on Vercel, which keeps standard request logs for a short period under
+      <a href="https://vercel.com/legal/privacy-policy">Vercel's privacy policy</a>.</li>
   </ul>
-  <p>No analytics, no advertising, no tracking cookies, and your data is never sold or shared.</p>
+  <p>No analytics, no advertising, no tracking cookies, no profiling or automated decisions, and your data is never sold.</p>
+
+  <h2>Who receives data</h2>
+  <ul>
+    <li><strong>GitHub</strong> (GitHub, Inc.), which holds your repositories and handles sign-in, under
+      <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>.</li>
+    <li><strong>Vercel</strong> (Vercel Inc.), our hosting provider, acting as processor.</li>
+    <li><strong>Google</strong> (Google Fonts), only with your consent.</li>
+  </ul>
+  <p>These companies are based in the United States. Transfers rely on the EU–US Data Privacy Framework and/or the
+    European Commission's Standard Contractual Clauses.</p>
 
   <h2>The command-line tool</h2>
   <p>The <code>skylls</code> CLI runs on your computer and talks directly to GitHub with your own <code>gh</code>/<code>git</code>
@@ -57,18 +88,33 @@
     queries skills.sh, and when the <code>claude</code> CLI is installed, <code>skylls push</code> sends the item's
     instruction file to Anthropic to write a one-sentence summary (skip it with <code>--about</code>).</p>
 
-  <h2>Your control</h2>
+  <h2>Your rights</h2>
+  <p>You have the right to access, correct or delete your personal data, to restrict or object to its processing, to data
+    portability, and to withdraw consent at any time without affecting earlier processing. Since we store nothing, in
+    practice:</p>
   <ul>
-    <li>Sign out at any time from the dashboard.</li>
+    <li>Sign out at any time from the dashboard; this deletes the session cookie.</li>
+    <li>Change or withdraw cookie consent from <a href="#" data-cookie-settings>Cookie settings</a>.</li>
     <li>Revoke skylls' access at <a href="https://github.com/settings/applications">github.com/settings/applications</a>;
       the next request fails and nothing remains on our side.</li>
     <li>Your skills, agents and swarms stay in your own GitHub repositories, under your control.</li>
   </ul>
+  <p>You can also complain to a data protection authority: in Spain, where skylls is run, the
+    <a href="https://www.aepd.es">Agencia Española de Protección de Datos</a>, or the one where you live (see the
+    <a href="https://www.edpb.europa.eu/about-edpb/about-edpb/members_en">list of authorities</a>).</p>
+
+  <h2>Children</h2>
+  <p>skylls is not meant for children under 16 and doesn't knowingly process their data. GitHub accounts require users to
+    be at least 13.</p>
 
   <h2>Contact</h2>
-  <p>Questions or requests: open an issue at
-    <a href="https://github.com/jcsancho/skylls/issues">github.com/jcsancho/skylls/issues</a>.
-    If this policy changes, the date at the top changes too.</p>
+  <p>To exercise your rights or ask anything about your data, email
+    <a href="mailto:privacy@skylls.dev">privacy@skylls.dev</a>. We answer within one month, as the GDPR requires.
+    General questions can also go to <a href="https://github.com/jcsancho/skylls/issues">github.com/jcsancho/skylls/issues</a>
+    (it's public, so don't include personal details there). If this policy changes, the date at the top changes too.</p>
 </main>
+<footer>
+  <a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/cookies">Cookies</a><a href="#" data-cookie-settings>Cookie settings</a>
+</footer>
 </body>
 </html>

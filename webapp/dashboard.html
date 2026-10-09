@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — skylls</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='6' fill='%238b5cf6' fill-opacity='.2'/%3E%3Crect x='7' y='7' width='14' height='3.5' rx='1.75' fill='%23a78bfa'/%3E%3Crect x='7' y='12.25' width='14' height='3.5' rx='1.75' fill='%2322d3ee'/%3E%3Crect x='7' y='17.5' width='9' height='3.5' rx='1.75' fill='%23a78bfa'/%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="/consent.js"></script>
   <style>
     :root {
       --bg: #09090b; --surface: #131316; --surface-hover: #1a1a1f;
@@ -135,6 +133,9 @@
     .signin { text-align: center; padding: 60px 20px; }
     .signin p { color: var(--text-muted); max-width: 520px; margin: 0 auto 28px; line-height: 1.6; font-size: 0.95rem; }
     .signin .fine { font-size: 0.78rem; color: var(--text-dim); margin-top: 22px; }
+    .site-foot { max-width: 960px; margin: 0 auto; padding: 24px; text-align: center; font-size: 0.78rem; color: var(--text-dim); }
+    .site-foot a { color: var(--text-dim); text-decoration: none; }
+    .site-foot a:hover { color: var(--text-muted); }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -171,7 +172,7 @@
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           Sign in with GitHub
         </a>
-        <p class="fine">GitHub asks for access to your repositories so the dashboard can read your private skylls repos and manage who they're shared with. Your token stays encrypted on the server side and is never shown in the page. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
+        <p class="fine">GitHub asks for access to your repositories so the dashboard can read your private skylls repos and manage who they're shared with. Your token stays encrypted on the server side and is never shown in the page. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/cookies">Cookies</a> · <a href="#" data-cookie-settings>Cookie settings</a></p>
       </div>
     </div>
 
@@ -226,6 +227,11 @@ skylls pull --update                        <span class="cm"># newer versions</s
       </div>
     </div>
   </div>
+
+  <footer class="site-foot">
+    <a href="/">skylls</a> · <a href="/docs">Docs</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·
+    <a href="/cookies">Cookies</a> · <a href="#" data-cookie-settings>Cookie settings</a>
+  </footer>
 
   <script>
     const KIND_LABEL = { skills: "Skills", agents: "Agents", swarms: "Swarms" };

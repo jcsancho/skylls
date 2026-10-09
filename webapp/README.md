@@ -30,7 +30,8 @@ same logic as the CLI (`../skylls/kinds.py`).
 
 | file | what |
 |---|---|
-| `index.html`, `docs.html`, `dashboard.html`, `privacy.html`, `terms.html` | the pages |
+| `index.html`, `docs.html`, `dashboard.html`, `privacy.html`, `terms.html`, `cookies.html` | the pages |
+| `consent.js` | cookie banner + settings; loads Google Fonts only after consent |
 | `api/auth/login.js`, `callback.js`, `logout.js` | sign-in with GitHub |
 | `api/me.js`, `items.js`, `access.js` | who you are; your and your friends' items + invitations; who can see an item |
 | `api/share.js`, `unshare.js`, `invite.js`, `suggestion.js` | the actions |
