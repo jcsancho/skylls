@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install skylls: share agent skills, agents and swarms through your own private GitHub repos.
 #
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/jcsancho/skylls/main/install.sh)"
+#   curl -fsSL https://skylls.dev/install.sh | bash
 #
 # Options:
 #   -y, --yes       install missing tools and answer yes to every question

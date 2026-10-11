@@ -3,6 +3,24 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.4.0 — 2026-10-11
+
+- **New npm name: `@skylls/cli`** (`npm install -g @skylls/cli`). `skylls
+  update` moves installs of the old `@jcsancho/skylls` package to it (it
+  uninstalls the old package first, since both own the `skylls` command, and
+  puts it back if the new install fails).
+- **The installer now lives at `https://skylls.dev/install.sh`**:
+  `curl -fsSL https://skylls.dev/install.sh | bash` (options after
+  `bash -s --`). The old GitHub URL keeps working.
+
+## webapp 1.7.0 — 2026-10-11
+
+- Serves `/install.sh` (a copy of the repo's installer; a test keeps them
+  identical) as plain text.
+- Install commands on the landing page, `/docs`, `/llms.txt` and `/skill.md`
+  use `@skylls/cli` and `curl -fsSL https://skylls.dev/install.sh | bash`;
+  the docs explain how to move from `@jcsancho/skylls`.
+
 ## webapp 1.6.2 — 2026-10-11
 
 - The landing page loads `network.svg?v=<version>` so browsers fetch the new

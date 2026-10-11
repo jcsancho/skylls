@@ -506,7 +506,14 @@ def cmd_agent_skill(cfg: dict, agent: Optional[str], is_global: bool, dry_run: b
 
 # ── Updating skylls itself ─────────────────────────────────────────────────
 SKYLLS_REPO = "jcsancho/skylls"
-NPM_PACKAGE = "@jcsancho/skylls"
+NPM_PACKAGE = "@skylls/cli"
+OLD_NPM_PACKAGE = "@jcsancho/skylls"  # the name before 1.4.0; `skylls update` moves npm installs off it
+
+
+def old_npm_install() -> bool:
+    """True when this skylls came from the old npm package name."""
+    parts = Path(__file__).resolve().parts
+    return "node_modules" in parts and "@jcsancho" in parts
 
 
 def install_kind() -> str:
@@ -525,8 +532,11 @@ def install_kind() -> str:
 def latest_version(kind: str) -> Optional[str]:
     """The newest released skylls: on npm for npm installs, else the highest v<x.y.z> tag on GitHub."""
     if kind == "npm":
-        res = subprocess.run(["npm", "view", NPM_PACKAGE, "version"], capture_output=True, text=True)
-        return res.stdout.strip() or None
+        for package in (NPM_PACKAGE, OLD_NPM_PACKAGE):
+            res = subprocess.run(["npm", "view", package, "version"], capture_output=True, text=True)
+            if res.stdout.strip():
+                return res.stdout.strip()
+        return None
     res = git("ls-remote", "--tags", "--refs", repo_url(SKYLLS_REPO), check=False)
     tags = re.findall(r"refs/tags/v(\d+\.\d+\.\d+)$", res.stdout, re.M)
     return max(tags, key=version_key) if tags else None
@@ -538,12 +548,15 @@ def cmd_update(check: bool, dry_run: bool) -> None:
     latest = latest_version(kind)
     if not latest:
         die("Could not find the newest skylls version (no network, or GitHub/npm unreachable).")
-    newer = version_key(latest) > version_key(__version__)
+    moving = kind == "npm" and old_npm_install()
+    newer = version_key(latest) > version_key(__version__) or moving
     if JSON_MODE and (check or not newer):
         emit({"version": __version__, "latest": latest, "newer": newer, "installed_with": kind})
     if not newer:
         ok(f"skylls {__version__} is the newest version.")
         return
+    if moving:
+        info(f"skylls moved on npm from {OLD_NPM_PACKAGE} to {NPM_PACKAGE}.")
     info(f"skylls {latest} is available (you have {__version__}). What changed: "
          f"https://github.com/{SKYLLS_REPO}/blob/main/CHANGES.md")
     if check:
@@ -560,11 +573,19 @@ def cmd_update(check: bool, dry_run: bool) -> None:
             + ("Run git pull there." if kind == "source" else f"Reinstall with: uv tool install --force {spec}"))
     if not shutil.which(cmd[0]):
         die(f"{cmd[0]} is not on your PATH; skylls was installed with it. Run: {' '.join(cmd)}")
+    # Both npm packages own the `skylls` command, so the old one goes first.
+    uninstall = ["npm", "uninstall", "-g", OLD_NPM_PACKAGE] if moving else None
     if dry_run:
+        if uninstall:
+            info(f"[dry-run] Would run: {' '.join(uninstall)}")
         info(f"[dry-run] Would run: {' '.join(cmd)}")
         return
     section(f"Updating skylls {__version__} → {latest}")
+    if uninstall:
+        subprocess.run(uninstall, capture_output=True, text=True)
     res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0 and uninstall:
+        subprocess.run(["npm", "install", "-g", f"{OLD_NPM_PACKAGE}@{__version__}"], capture_output=True, text=True)
     if res.returncode != 0:
         die(f"The update failed ({' '.join(cmd)}):\n{(res.stderr or res.stdout).strip()}")
     ok(f"skylls {latest} installed. The skylls skill for your agents updates the next time you run skylls.")

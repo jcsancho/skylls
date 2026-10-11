@@ -17,7 +17,7 @@ summaries, folders, suggestions and a secret scan.
 One command (macOS / Linux):
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/jcsancho/skylls/main/install.sh)"
+curl -fsSL https://skylls.dev/install.sh | bash
 ```
 
 The installer:
@@ -29,13 +29,16 @@ The installer:
 
 Options: `-y` answers yes to everything, `--no-setup` only installs, and
 `--ref v1.0.0` installs a specific version. Pass them after the command:
-`bash -c "$(curl …)" _ -y`.
+`curl -fsSL https://skylls.dev/install.sh | bash -s -- -y`.
 
 With npm (needs Node 18+ and Python 3.11+; the package runs the Python tool):
 
 ```bash
-npm install -g @jcsancho/skylls && skylls setup      # or try it: npx @jcsancho/skylls --version
+npm install -g @skylls/cli && skylls setup      # or try it: npx @skylls/cli --version
 ```
+
+Installed it as `@jcsancho/skylls` before 1.4.0? `skylls update` moves you to
+`@skylls/cli`.
 
 Or by hand: `uv tool install git+https://github.com/jcsancho/skylls` (or
 `pipx install …`), then `skylls setup`.

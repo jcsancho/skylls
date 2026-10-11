@@ -237,7 +237,7 @@
         <h3>1. Install the skylls skill</h3>
 <pre><code>skylls agent-skill -g -a all                     <span class="cm"># Claude Code, Codex and Gemini, global</span>
 skylls add jcsancho/skylls/skylls -g -a all      <span class="cm"># or straight from the public GitHub repo</span></code></pre>
-        <p>No skylls yet? <code>npm install -g @jcsancho/skylls</code>, then <code>skylls setup</code> (see <a href="#install">Install</a>).</p>
+        <p>No skylls yet? <code>npm install -g @skylls/cli</code>, then <code>skylls setup</code> (see <a href="#install">Install</a>).</p>
         <h3>2. Skills</h3>
         <p><strong>Share</strong>: a skill is a whole capability (its <code>SKILL.md</code> recipe plus its scripts and files), published to its own private repo, so everyone you share it with runs the same skill, maintained in one place:</p>
 <pre><code>skylls push pdf -m "First version"     <span class="cm"># ~/.claude/skills/pdf → &lt;org&gt;/skill-pdf (private)</span>
@@ -271,12 +271,13 @@ skylls add pdf -g -a all               <span class="cm"># writes into ~/.claude/
         <h2><a href="#install">Install</a></h2>
         <h3>With npm</h3>
         <p>Needs Node 18+ and Python 3.11+ (the npm package runs the Python tool).</p>
-<pre><code>npm install -g @jcsancho/skylls
+<pre><code>npm install -g @skylls/cli
 skylls setup</code></pre>
-        <p>To try it without installing: <code>npx @jcsancho/skylls --version</code>.</p>
+        <p>To try it without installing: <code>npx @skylls/cli --version</code>.</p>
+        <p>Installed it as <code>@jcsancho/skylls</code> before 1.4.0? Run <code>skylls update</code>: it moves you to <code>@skylls/cli</code> (or by hand: <code>npm uninstall -g @jcsancho/skylls &amp;&amp; npm install -g @skylls/cli</code>).</p>
 
         <h3>With the installer (macOS / Linux)</h3>
-<pre><code>bash -c "$(curl -fsSL https://raw.githubusercontent.com/jcsancho/skylls/main/install.sh)"</code></pre>
+<pre><code>curl -fsSL https://skylls.dev/install.sh | bash</code></pre>
         <p>The installer:</p>
         <ol>
           <li>Checks <code>git</code>, <code>uv</code>, <code>gh</code> and <code>gitleaks</code>, and offers to install missing ones with Homebrew.</li>
@@ -284,7 +285,7 @@ skylls setup</code></pre>
           <li>Logs you in to GitHub.</li>
           <li>Runs <code>skylls setup</code>.</li>
         </ol>
-        <p>Options go after the command: <code>-y</code> answers yes to everything, <code>--no-setup</code> only installs, <code>--ref v1.0.0</code> installs a specific version. Example: <code>bash -c "$(curl …)" _ -y</code>.</p>
+        <p>Options go after the command: <code>-y</code> answers yes to everything, <code>--no-setup</code> only installs, <code>--ref v1.0.0</code> installs a specific version. Example: <code>curl -fsSL https://skylls.dev/install.sh | bash -s -- -y</code>.</p>
 
         <h3>By hand</h3>
 <pre><code>uv tool install git+https://github.com/jcsancho/skylls   <span class="cm"># or: pipx install git+https://github.com/jcsancho/skylls</span>
@@ -301,7 +302,7 @@ skylls setup</code></pre>
 <pre><code>skylls update                      <span class="cm"># the newest version, installed the way you installed skylls</span>
 skylls update --check              <span class="cm"># only check</span>
 skylls --version                   <span class="cm"># check your version</span></code></pre>
-        <p>On 1.2.2 or older (no <code>skylls update</code> yet), update once by hand: <code>uv tool install --force git+https://github.com/jcsancho/skylls</code>, or <code>npm install -g @jcsancho/skylls</code> if you installed with npm.</p>
+        <p>On 1.2.2 or older (no <code>skylls update</code> yet), update once by hand: <code>uv tool install --force git+https://github.com/jcsancho/skylls</code>, or <code>npm uninstall -g @jcsancho/skylls &amp;&amp; npm install -g @skylls/cli</code> if you installed with npm.</p>
       </section>
 
       <!-- Setup -->
@@ -608,7 +609,7 @@ skylls add anthropics/skills/pdf -g        <span class="cm"># install straight f
     <span>skylls &copy; 2026 &middot; Apache-2.0 &middot; Built for people who share agent skills</span>
     <div style="display:flex;gap:20px">
       <a href="https://github.com/jcsancho/skylls" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://www.npmjs.com/package/@jcsancho/skylls" target="_blank" rel="noopener">npm</a>
+      <a href="https://www.npmjs.com/package/@skylls/cli" target="_blank" rel="noopener">npm</a>
       <a href="/docs">Docs</a>
       <a href="/llms.txt">llms.txt</a>
       <a href="/dashboard">Dashboard</a>

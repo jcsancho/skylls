@@ -234,6 +234,16 @@ test("docs for LLMs: llms.txt, skill.md (same as the CLI's skill), /doc redirect
   assert.equal(doc.headers.get("location"), "/docs");
 });
 
+test("/install.sh is a copy of the repo's installer, as plain text", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const res = await call("/install.sh");
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/plain/);
+  const repo = await readFile(new URL("../../install.sh", import.meta.url), "utf8");
+  assert.equal(res.data, repo, "webapp/install.sh must be a copy of install.sh");
+  assert.match((await call("/")).data, /curl -fsSL https:\/\/skylls\.dev\/install\.sh \| bash/);
+});
+
 test("privacy and terms pages", async () => {
   assert.match((await call("/privacy")).data, /has no database and doesn't store your data/);
   assert.match((await call("/terms")).data, /Apache License 2\.0/);

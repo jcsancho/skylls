@@ -11,7 +11,7 @@ or a friend already has a skill for it (`skylls find <words> --json --limit 5`).
 and use it. When the user asks you to share a skill, agent or swarm, skylls does that too.
 
 Site: https://skylls.dev · Docs: https://skylls.dev/docs · This file: https://skylls.dev/llms.txt
-Repo: https://github.com/jcsancho/skylls · npm: `@jcsancho/skylls` · License: Apache-2.0
+Repo: https://github.com/jcsancho/skylls · npm: `@skylls/cli` · License: Apache-2.0
 
 ## 1. For LLMs: install the skylls skill first
 
@@ -36,8 +36,8 @@ Identify your surface first. The right setup differs, and the wrong one can't wo
 - **Local coding agent** (Claude Code, Codex, Gemini CLI on the user's machine): ask the user
   once, then install:
 
-      npm install -g @jcsancho/skylls                                                       # Node 18+ and Python 3.11+
-      bash -c "$(curl -fsSL https://raw.githubusercontent.com/jcsancho/skylls/main/install.sh)"   # or the installer (macOS / Linux)
+      npm install -g @skylls/cli                                                       # Node 18+ and Python 3.11+
+      curl -fsSL https://skylls.dev/install.sh | bash   # or the installer (macOS / Linux)
       uv tool install git+https://github.com/jcsancho/skylls                                # or by hand (also pipx)
 
   Check with `skylls --version`. Requirements: Python 3.11+, `git`, GitHub CLI `gh` logged in

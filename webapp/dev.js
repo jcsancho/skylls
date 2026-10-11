@@ -15,6 +15,7 @@ const ASSETS = {
   "/llms.txt": "text/markdown; charset=utf-8",
   "/skill.md": "text/markdown; charset=utf-8",
   "/network.svg": "image/svg+xml",
+  "/install.sh": "text/plain; charset=utf-8",
 };
 const REDIRECTS = { "/doc": "/docs" };
 
