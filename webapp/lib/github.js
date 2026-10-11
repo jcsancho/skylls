@@ -39,7 +39,7 @@ export async function graphql(token, query, variables = {}) {
   return data.data;
 }
 
-/** 'owner/skylls-agent-btc' or 'org/agent-btc' → {kind, name}; null for other repos. */
+/** 'owner/skylls-agent-lead-generator' or 'org/agent-lead-generator' → {kind, name}; null for other repos. */
 export function itemOf(repoName, short = true) {
   const base = repoName.split("/").pop();
   const formats = short ? ["skylls-%-", "%-"] : ["skylls-%-"];

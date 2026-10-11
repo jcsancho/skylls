@@ -3,6 +3,13 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.6.1 — 2026-10-11
+
+- Examples on the website now use generic business names (`seo-audit`,
+  `lead-generator`, `marketing-team`, `x-marketing`, `tiktok-creator`, …)
+  in the graphics, the docs and `/llms.txt`, instead of personal ones.
+- Long share commands in the "Share anything" cards wrap instead of being cut.
+
 ## webapp 1.6.0 — 2026-10-10
 
 - **Landing page graphics** that show what skylls shares and with whom:

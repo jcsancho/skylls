@@ -87,12 +87,12 @@ An agent is a long-lived agent's folder (`CLAUDE.md`/`AGENTS.md`, `.claude/`, sc
 Obsidian memory; a swarm is a team of agents. Same commands under `skylls agents …` and
 `skylls swarms …`. Only the definition and its memory folder are shared, never runtime state.
 
-    skylls agents push btc -m "what changed"    # ~/agents/btc → <org>/agent-btc
-    skylls agents add btc --from alice           # → ~/agents/btc, with its memory
-    skylls agents add btc --as btc2              # under another name
-    skylls agents add btc --update-memory        # also replace your copy of its memory
-    skylls swarms add apps --from alice          # → ~/swarms/apps
-    skylls agents list --json                    # "published":false = not published yet
+    skylls agents push lead-generator -m "what changed"  # ~/agents/lead-generator → <org>/agent-lead-generator
+    skylls agents add lead-generator --from alice        # → ~/agents/lead-generator, with its memory
+    skylls agents add lead-generator --as leads2         # under another name
+    skylls agents add lead-generator --update-memory     # also replace your copy of its memory
+    skylls swarms add marketing-team --from alice        # → ~/swarms/marketing-team
+    skylls agents list --json                            # "published":false = not published yet
 
 ## 5. Friends, suggestions, folders
 

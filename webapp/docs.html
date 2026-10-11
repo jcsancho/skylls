@@ -313,8 +313,8 @@ skylls --version                   <span class="cm"># check your version</span><
             <strong>Where to publish.</strong> We recommend a GitHub <strong>organization</strong> you administer. It works like a folder holding one private repo per item, keeps them apart from your other repos, and lets friends have <strong>read-only</strong> access.
 <pre><code>github.com/you-skylls          <span class="cm">← your organization</span>
 ├── skill-pdf                  <span class="cm">← one private repo per skill</span>
-├── agent-btc                  <span class="cm">← one per agent (definition + memory)</span>
-└── swarm-apps_ideas           <span class="cm">← one per swarm</span></code></pre>
+├── agent-lead-generator       <span class="cm">← one per agent (definition + memory)</span>
+└── swarm-marketing-team       <span class="cm">← one per swarm</span></code></pre>
             If you don't have one, setup shows how to create it (free, about a minute, at <a href="https://github.com/account/organizations/new?plan=free" target="_blank" rel="noopener">github.com/account/organizations/new</a>), can open the page and waits until it exists. It also offers to set the organization's base permission to <em>No permission</em>, so members see nothing by default. Type <code>account</code> to use your personal account instead; repos are then named <code>skylls-skill-pdf</code> and so on.
           </li>
           <li><strong>Your agent CLIs:</strong> <code>claude</code>, <code>codex</code>, <code>gemini</code> or <code>all</code>.</li>
@@ -396,12 +396,12 @@ skylls add pdf@1.0.0           <span class="cm"># go back to an older version</s
         <h2><a href="#agents-swarms">Agents and swarms</a></h2>
         <p>Agents and swarms use the same commands, under <code>skylls agents …</code> and <code>skylls swarms …</code>:</p>
 <pre><code>skylls agents                                   <span class="cm"># yours (published or not) and friends'</span>
-skylls agents push btc -m "Adds ETH"            <span class="cm"># ~/agents/btc → &lt;org&gt;/agent-btc</span>
-skylls agents share btc @bob
-skylls agents add btc --from alice              <span class="cm"># → ~/agents/btc</span>
-skylls agents add btc@1.0.0 --from alice --as btc-old
-skylls agents remove btc                        <span class="cm"># local folder → the Trash (repos untouched)</span>
-skylls swarms push apps_ideas                   <span class="cm"># ~/swarms/apps_ideas → &lt;org&gt;/swarm-apps_ideas</span></code></pre>
+skylls agents push lead-generator -m "Adds LinkedIn"  <span class="cm"># ~/agents/lead-generator → &lt;org&gt;/agent-lead-generator</span>
+skylls agents share lead-generator @bob
+skylls agents add lead-generator --from alice   <span class="cm"># → ~/agents/lead-generator</span>
+skylls agents add lead-generator@1.0.0 --from alice --as lead-generator-old
+skylls agents remove lead-generator             <span class="cm"># local folder → the Trash (repos untouched)</span>
+skylls swarms push marketing-team               <span class="cm"># ~/swarms/marketing-team → &lt;org&gt;/swarm-marketing-team</span></code></pre>
 
         <h3>What gets published</h3>
         <p>Only the <strong>definition</strong>, never runtime state:</p>
@@ -416,7 +416,7 @@ skylls swarms push apps_ideas                   <span class="cm"># ~/swarms/apps
 
         <h3>Installing a friend's agent or swarm</h3>
         <ul>
-          <li>It goes into your agents or swarms folder (for example <code>~/agents/btc/</code>).</li>
+          <li>It goes into your agents or swarms folder (for example <code>~/agents/lead-generator/</code>).</li>
           <li>Absolute paths from their machine are rewritten to yours, and missing ones are listed.</li>
           <li>Running <code>add</code> again updates the definition. Your runtime data stays, and so does your memory unless you pass <code>--update-memory</code>.</li>
           <li>Where it came from is recorded in its <code>CHANGELOG.md</code>.</li>
@@ -428,7 +428,7 @@ skylls swarms push apps_ideas                   <span class="cm"># ~/swarms/apps
         <h2><a href="#memory">Obsidian memory</a></h2>
         <p>An agent's or swarm's memory travels with it.</p>
         <ul>
-          <li><strong>Best place:</strong> inside the item's folder, for example <code>~/agents/btc/wiki/</code>. A subfolder counts as memory if it's an Obsidian vault (has <code>.obsidian/</code>) or is named <code>memory</code>, <code>wiki</code>, <code>obsidian</code> or <code>*-wiki</code>. All of it is published, except Obsidian's per-user window layout, the trash and files over 5 MB.</li>
+          <li><strong>Best place:</strong> inside the item's folder, for example <code>~/agents/lead-generator/wiki/</code>. A subfolder counts as memory if it's an Obsidian vault (has <code>.obsidian/</code>) or is named <code>memory</code>, <code>wiki</code>, <code>obsidian</code> or <code>*-wiki</code>. All of it is published, except Obsidian's per-user window layout, the trash and files over 5 MB.</li>
           <li><strong>Memory elsewhere in <code>~/Obsidian</code></strong> also works: skylls finds a <code>&lt;x&gt;-wiki</code> vault the instructions mention, or <code>&lt;vault&gt;/AGENTS/&lt;name&gt;/</code>. It's snapshotted into <code>.skylls-memory/</code> and restored to the same place under your friend's home.</li>
           <li><strong>Listing it yourself:</strong> a <code>.skyllsmemory</code> file in the item's folder lists memory folders.</li>
         </ul>
@@ -537,12 +537,12 @@ skylls add anthropics/skills/pdf -g        <span class="cm"># install straight f
       <!-- How it works -->
       <section id="how-it-works">
         <h2><a href="#how-it-works">How it works</a></h2>
-<pre><code>&lt;org&gt;/skill-pdf      ┐  one private repo per item, only what friends may see
-&lt;org&gt;/agent-btc      │  + CHANGELOG.md, tags v1.0.0…, topics (folder)
-&lt;org&gt;/swarm-apps     ┘  (personal account: skylls-skill-pdf, …)
-        ▲ push (copy, commit, tag)        │ add (copy the version you want)
-        │                                 ▼
-~/.claude/skills/pdf   ~/agents/btc   ~/swarms/apps       <span class="cm">← your copies / workspaces</span></code></pre>
+<pre><code>&lt;org&gt;/skill-pdf            ┐  one private repo per item, only what friends may see
+&lt;org&gt;/agent-lead-generator │  + CHANGELOG.md, tags v1.0.0…, topics (folder)
+&lt;org&gt;/swarm-marketing-team ┘  (personal account: skylls-skill-pdf, …)
+        ▲ push (copy, commit, tag)              │ add (copy the version you want)
+        │                                       ▼
+~/.claude/skills/pdf   ~/agents/lead-generator   ~/swarms/marketing-team   <span class="cm">← your copies / workspaces</span></code></pre>
         <ul>
           <li><strong>Config:</strong> <code>~/.config/skylls/config.json</code> holds your login, where you publish, your agent CLIs, your folders and your friends.</li>
           <li><strong>Finding items:</strong> two GitHub GraphQL queries (the repos you can access, then the skylls repos' changelogs and instructions).</li>
