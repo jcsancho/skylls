@@ -3,6 +3,11 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.6.2 — 2026-10-11
+
+- The landing page loads `network.svg?v=<version>` so browsers fetch the new
+  graphic after a change instead of showing a cached one.
+
 ## webapp 1.6.1 — 2026-10-11
 
 - Examples on the website now use generic business names (`seo-audit`,
