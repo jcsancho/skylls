@@ -222,6 +222,112 @@
     .cta-box h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 12px; }
     .cta-box p { color: var(--text-muted); margin-bottom: 32px; font-size: 1rem; line-height: 1.5; }
 
+    /* Graphics */
+    .sprites { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .c-violet { color: var(--accent); }
+    .c-cyan { color: var(--cyan); }
+    .c-amber { color: var(--amber); }
+    .c-green { color: var(--green); }
+    .c-dim { color: var(--text-dim); }
+    svg text { font-family: inherit; }
+    .g-title { fill: var(--text); font-weight: 600; }
+    .g-sub { fill: var(--text-dim); }
+    .g-mono { font-family: 'JetBrains Mono', monospace; }
+    .g-panel { fill: var(--surface); stroke: var(--border); }
+    .g-row { fill: #17171b; stroke: var(--border-subtle); }
+    .g-wire { fill: none; stroke: var(--border); stroke-width: 1.5; stroke-dasharray: 4 6; animation: dash 1.6s linear infinite; }
+    @keyframes dash { to { stroke-dashoffset: -20; } }
+
+    .share-map { max-width: 1100px; margin: -40px auto 0; padding: 0 24px 40px; position: relative; }
+    .share-map-frame {
+      background: linear-gradient(180deg, rgba(19,19,22,.9), rgba(9,9,11,.6));
+      border: 1px solid var(--border-subtle); border-radius: 20px; padding: 18px;
+      box-shadow: 0 30px 80px -30px rgba(139, 92, 246, .35);
+    }
+    .share-map svg { display: block; width: 100%; height: auto; }
+    @media (max-width: 640px) {
+      .share-map-frame { overflow-x: auto; padding: 12px; }
+      .share-map svg { min-width: 640px; }
+    }
+    .share-map-caption { text-align: center; margin-top: 18px; font-size: .85rem; color: var(--text-dim); }
+    .share-map-caption code { color: var(--accent); }
+
+    .kinds-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    @media (max-width: 900px) { .kinds-grid { grid-template-columns: minmax(0, 1fr); } }
+    .kind-card {
+      background: var(--surface); border: 1px solid var(--border-subtle); border-radius: 16px;
+      overflow: hidden; display: flex; flex-direction: column; transition: all .25s;
+    }
+    .kind-card:hover { transform: translateY(-3px); border-color: var(--border); }
+    .kind-art { position: relative; border-bottom: 1px solid var(--border-subtle); }
+    .kind-art svg { display: block; width: 100%; height: auto; }
+    .kind-card.violet .kind-art { background: radial-gradient(circle at 50% 60%, rgba(139,92,246,.18), transparent 70%); }
+    .kind-card.cyan .kind-art { background: radial-gradient(circle at 50% 60%, rgba(34,211,238,.14), transparent 70%); }
+    .kind-card.amber .kind-art { background: radial-gradient(circle at 50% 60%, rgba(245,158,11,.14), transparent 70%); }
+    .kind-body { padding: 24px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+    .kind-tag { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .kind-card.violet .kind-tag { color: var(--accent); }
+    .kind-card.cyan .kind-tag { color: var(--cyan); }
+    .kind-card.amber .kind-tag { color: var(--amber); }
+    .kind-body h3 { font-size: 1.15rem; font-weight: 700; }
+    .kind-body p { font-size: .875rem; color: var(--text-dim); line-height: 1.55; }
+    .kind-body ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+    .kind-body li {
+      font-size: .72rem; color: var(--text-muted); background: #1b1b20;
+      border: 1px solid var(--border-subtle); border-radius: 100px; padding: 3px 10px;
+    }
+    .kind-cmd {
+      margin-top: auto; font-family: 'JetBrains Mono', monospace; font-size: .75rem;
+      background: var(--bg); border: 1px solid var(--border-subtle); border-radius: 8px;
+      padding: 10px 12px; color: var(--text-muted); overflow-x: auto; white-space: nowrap;
+    }
+    .kind-cmd span { color: var(--amber); }
+
+    .audience { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    @media (max-width: 900px) { .audience { grid-template-columns: minmax(0, 1fr); } }
+    .audience-card {
+      background: var(--surface); border: 1px solid var(--border-subtle); border-radius: 16px;
+      padding: 28px; display: flex; flex-direction: column; gap: 14px;
+    }
+    .audience-card h3 { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .audience-card h3 svg { width: 26px; height: 26px; }
+    .audience-card > p { font-size: .9rem; color: var(--text-dim); line-height: 1.55; }
+    .audience-card svg.art { width: 100%; height: auto; display: block; }
+    .agent-term {
+      background: var(--bg); border: 1px solid var(--border-subtle); border-radius: 12px;
+      font-family: 'JetBrains Mono', monospace; font-size: .78rem; line-height: 1.8;
+      padding: 18px 20px; color: var(--text-muted); overflow-x: auto; min-height: 250px;
+    }
+    .agent-term div { white-space: pre; opacity: 0; animation: termline 12s infinite; }
+    .agent-term .say { color: var(--cyan); }
+    .agent-term .cmd { color: var(--text); }
+    .agent-term .cmd b { color: var(--amber); font-weight: 400; }
+    .agent-term .out { color: var(--text-dim); }
+    .agent-term .ok { color: var(--green); }
+    .agent-term div:nth-child(1) { animation-delay: 0s; }
+    .agent-term div:nth-child(2) { animation-delay: .8s; }
+    .agent-term div:nth-child(3) { animation-delay: 1.8s; }
+    .agent-term div:nth-child(4) { animation-delay: 2.8s; }
+    .agent-term div:nth-child(5) { animation-delay: 3.8s; }
+    .agent-term div:nth-child(6) { animation-delay: 4.6s; }
+    .agent-term div:nth-child(7) { animation-delay: 5.6s; }
+    @keyframes termline {
+      0% { opacity: 0; transform: translateY(4px); }
+      4%, 88% { opacity: 1; transform: none; }
+      96%, 100% { opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .g-wire, .agent-term div { animation: none; opacity: 1; }
+      .packet { display: none; }
+    }
+
+    .network { max-width: 1100px; margin: 0 auto; padding: 100px 24px 40px; text-align: center; }
+    .network .section-desc { margin: 0 auto 40px; }
+    .network img {
+      display: block; width: 100%; height: auto; border-radius: 22px;
+      border: 1px solid var(--border-subtle); box-shadow: 0 40px 100px -40px rgba(34, 211, 238, .35);
+    }
+
     footer {
       max-width: 1100px; margin: 0 auto; padding: 24px;
       border-top: 1px solid var(--border-subtle);
@@ -238,6 +344,45 @@
   </style>
 </head>
 <body>
+  <svg class="sprites" aria-hidden="true">
+    <defs>
+      <symbol id="i-person" viewBox="0 0 40 40">
+        <circle cx="20" cy="14" r="6.5" fill="currentColor" fill-opacity=".18" stroke="currentColor" stroke-width="2"/>
+        <path d="M8 34c0-6.6 5.4-11 12-11s12 4.4 12 11" fill="currentColor" fill-opacity=".18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-bot" viewBox="0 0 40 40">
+        <path d="M20 9V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="20" cy="4" r="2" fill="currentColor"/>
+        <rect x="3" y="17" width="4" height="8" rx="2" fill="currentColor"/>
+        <rect x="33" y="17" width="4" height="8" rx="2" fill="currentColor"/>
+        <rect x="7" y="9" width="26" height="23" rx="7" fill="currentColor" fill-opacity=".16" stroke="currentColor" stroke-width="2"/>
+        <circle cx="15" cy="19" r="2.6" fill="currentColor"/>
+        <circle cx="25" cy="19" r="2.6" fill="currentColor"/>
+        <path d="M15 25.5h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-doc" viewBox="0 0 40 40">
+        <path d="M11 4h13l8 8v22a2 2 0 01-2 2H11a2 2 0 01-2-2V6a2 2 0 012-2z" fill="currentColor" fill-opacity=".16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M24 4v8h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M14 19h12M14 24h12M14 29h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-swarm" viewBox="0 0 40 40">
+        <path d="M20 12L10 28M20 12l10 16M10 28h20" stroke="currentColor" stroke-width="1.8" stroke-opacity=".6"/>
+        <circle cx="20" cy="11" r="6" fill="currentColor" fill-opacity=".2" stroke="currentColor" stroke-width="2"/>
+        <circle cx="9" cy="29" r="6" fill="currentColor" fill-opacity=".2" stroke="currentColor" stroke-width="2"/>
+        <circle cx="31" cy="29" r="6" fill="currentColor" fill-opacity=".2" stroke="currentColor" stroke-width="2"/>
+        <circle cx="20" cy="11" r="2" fill="currentColor"/><circle cx="9" cy="29" r="2" fill="currentColor"/><circle cx="31" cy="29" r="2" fill="currentColor"/>
+      </symbol>
+      <symbol id="i-lock" viewBox="0 0 40 40">
+        <rect x="8" y="17" width="24" height="18" rx="4" fill="currentColor" fill-opacity=".16" stroke="currentColor" stroke-width="2.2"/>
+        <path d="M13 17v-4a7 7 0 0114 0v4" fill="none" stroke="currentColor" stroke-width="2.2"/>
+        <circle cx="20" cy="25" r="2.4" fill="currentColor"/><path d="M20 26v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-gem" viewBox="0 0 40 40">
+        <path d="M20 3l11 9-4 21-7 4-7-4-4-21z" fill="currentColor" fill-opacity=".2" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M20 3l-3 16 3 18M17 19l-8-7M17 19l10 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-opacity=".7"/>
+      </symbol>
+    </defs>
+  </svg>
 
   <nav>
     <div class="nav-inner">
@@ -251,6 +396,8 @@
         skylls
       </a>
       <div class="nav-links">
+        <a href="#network">Network</a>
+        <a href="#share">Share</a>
         <a href="#features">Features</a>
         <a href="#how-it-works">How It Works</a>
         <a href="#commands">Commands</a>
@@ -263,7 +410,7 @@
 
   <section class="hero">
     <div class="hero-badge"><span class="hero-badge-dot"></span>Open source &middot; Private by default</div>
-    <h1>Share your agent skills,<br><span class="gradient">one private repo at a time</span></h1>
+    <h1>Share skills, agents<br>and whole swarms,<br><span class="gradient">one private repo at a time</span></h1>
     <p>
       skylls publishes every skill, agent and swarm you make for Claude Code, Codex and Gemini
       to its own private GitHub repo &mdash; and shares each one with exactly the friends you choose.
@@ -287,6 +434,248 @@
       <button type="button" data-copy="install-script">Copy</button>
     </div>
     <p class="install-alt">or the one-line installer (checks git, gh and gitleaks, then runs setup)</p>
+  </section>
+
+  <div class="share-map" role="img" aria-label="Your skills, agents and swarms go through private GitHub repos, after a secret scan, to the friends and agents you choose">
+    <div class="share-map-frame">
+      <svg viewBox="0 0 1000 420" aria-hidden="true">
+        <!-- wires -->
+        <path class="g-wire" d="M290 143C350 143 350 210 410 210"/>
+        <path class="g-wire" d="M290 233C350 233 350 210 410 210"/>
+        <path class="g-wire" d="M290 323C350 323 350 210 410 210"/>
+        <path class="g-wire" d="M590 210C660 210 660 70 730 70"/>
+        <path class="g-wire" d="M590 210C660 210 660 160 730 160"/>
+        <path class="g-wire" d="M590 210C660 210 660 250 730 250"/>
+        <path class="g-wire" d="M590 210C660 210 660 340 730 340"/>
+
+        <!-- routes for the packets -->
+        <path id="r1" d="M290 143C350 143 350 210 410 210L590 210C660 210 660 70 730 70" fill="none"/>
+        <path id="r2" d="M290 233C350 233 350 210 410 210L590 210C660 210 660 70 730 70" fill="none"/>
+        <path id="r3" d="M290 323C350 323 350 210 410 210L590 210C660 210 660 160 730 160" fill="none"/>
+        <path id="r4" d="M290 143C350 143 350 210 410 210L590 210C660 210 660 250 730 250" fill="none"/>
+        <path id="r5" d="M290 143C350 143 350 210 410 210L590 210C660 210 660 340 730 340" fill="none"/>
+        <g class="packet c-violet"><circle r="10" fill="currentColor" opacity=".25"/><circle r="5" fill="currentColor"/>
+          <animateMotion dur="4s" begin="0s" repeatCount="indefinite"><mpath href="#r1"/></animateMotion></g>
+        <g class="packet c-cyan"><circle r="10" fill="currentColor" opacity=".25"/><circle r="5" fill="currentColor"/>
+          <animateMotion dur="4s" begin="-2.7s" repeatCount="indefinite"><mpath href="#r2"/></animateMotion></g>
+        <g class="packet c-amber"><circle r="10" fill="currentColor" opacity=".25"/><circle r="5" fill="currentColor"/>
+          <animateMotion dur="4s" begin="-3.4s" repeatCount="indefinite"><mpath href="#r3"/></animateMotion></g>
+        <g class="packet c-violet"><circle r="10" fill="currentColor" opacity=".25"/><circle r="5" fill="currentColor"/>
+          <animateMotion dur="4s" begin="-2s" repeatCount="indefinite"><mpath href="#r4"/></animateMotion></g>
+        <g class="packet c-violet"><circle r="10" fill="currentColor" opacity=".25"/><circle r="5" fill="currentColor"/>
+          <animateMotion dur="4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#r5"/></animateMotion></g>
+
+        <!-- you -->
+        <rect class="g-panel" x="20" y="30" width="270" height="360" rx="16"/>
+        <use href="#i-person" class="c-violet" x="36" y="44" width="34" height="34"/>
+        <text class="g-title" x="80" y="60" font-size="15">You</text>
+        <text class="g-sub" x="80" y="77" font-size="12">what you built</text>
+
+        <rect class="g-row" x="36" y="105" width="238" height="76" rx="12"/>
+        <use href="#i-doc" class="c-violet" x="50" y="123" width="40" height="40"/>
+        <text class="g-title" x="104" y="139" font-size="15">pdf</text>
+        <text class="g-sub" x="104" y="159" font-size="12">skill · v1.2.0</text>
+
+        <rect class="g-row" x="36" y="195" width="238" height="76" rx="12"/>
+        <use href="#i-bot" class="c-cyan" x="50" y="213" width="40" height="40"/>
+        <text class="g-title" x="104" y="229" font-size="15">btc</text>
+        <text class="g-sub" x="104" y="249" font-size="12">agent + Obsidian memory</text>
+
+        <rect class="g-row" x="36" y="285" width="238" height="76" rx="12"/>
+        <use href="#i-swarm" class="c-amber" x="50" y="303" width="40" height="40"/>
+        <text class="g-title" x="104" y="319" font-size="15">app-ideas</text>
+        <text class="g-sub" x="104" y="339" font-size="12">whole swarm · 5 agents</text>
+
+        <!-- github vault -->
+        <text class="g-sub" x="500" y="106" font-size="12" text-anchor="middle">GitHub</text>
+        <rect class="g-panel" x="410" y="120" width="180" height="180" rx="24" stroke-width="1.5"/>
+        <use href="#i-lock" class="c-green" x="472" y="140" width="56" height="56"/>
+        <text class="g-title" x="500" y="226" font-size="14" text-anchor="middle">Private repos</text>
+        <text class="g-sub" x="500" y="244" font-size="11.5" text-anchor="middle">one per item</text>
+        <rect x="442" y="260" width="116" height="24" rx="12" fill="#10b981" fill-opacity=".12" stroke="#10b981" stroke-opacity=".4"/>
+        <text x="500" y="276" font-size="11" text-anchor="middle" fill="#10b981">✓ secret scan</text>
+
+        <!-- recipients -->
+        <circle cx="760" cy="70" r="28" class="g-row" stroke="#a78bfa" stroke-opacity=".6"/>
+        <use href="#i-person" class="c-violet" x="742" y="52" width="36" height="36"/>
+        <text class="g-title" x="802" y="66" font-size="14">@bob</text>
+        <text class="g-sub" x="802" y="84" font-size="11.5">friend · gets pdf + btc</text>
+
+        <circle cx="760" cy="160" r="28" class="g-row" stroke="#f59e0b" stroke-opacity=".6"/>
+        <use href="#i-person" class="c-amber" x="742" y="142" width="36" height="36"/>
+        <text class="g-title" x="802" y="156" font-size="14">@carol</text>
+        <text class="g-sub" x="802" y="174" font-size="11.5">friend · gets the swarm</text>
+
+        <circle cx="760" cy="250" r="28" class="g-row" stroke="#22d3ee" stroke-opacity=".6"/>
+        <use href="#i-bot" class="c-cyan" x="742" y="232" width="36" height="36"/>
+        <text class="g-title" x="802" y="246" font-size="14">Claude Code</text>
+        <text class="g-sub" x="802" y="264" font-size="11.5">agent · installs it itself</text>
+
+        <circle cx="760" cy="340" r="28" class="g-row" stroke="#22d3ee" stroke-opacity=".6"/>
+        <use href="#i-bot" class="c-cyan" x="742" y="322" width="36" height="36"/>
+        <text class="g-title" x="802" y="336" font-size="14">Codex · Gemini</text>
+        <text class="g-sub" x="802" y="354" font-size="11.5">agents · same copy, linked</text>
+      </svg>
+    </div>
+    <p class="share-map-caption">One skill, one agent or a whole swarm &mdash; <code>skylls share &lt;name&gt; @friend</code> and it's theirs, privately.</p>
+  </div>
+
+  <div class="network" id="network">
+    <p class="section-label">One network</p>
+    <h2 class="section-title">People and agents, sharing with each other</h2>
+    <p class="section-desc">
+      Everyone on skylls can share what they built and install what friends shared: a single skill,
+      a whole agent with its memory, or a full swarm, across Claude Code, Codex and Gemini.
+      Each item goes through its own private repo, to exactly who you chose.
+    </p>
+    <img src="/network.svg" width="1200" height="720" loading="lazy"
+         alt="People and AI agents around skylls exchange skills, whole agents and swarms, each through its own private GitHub repo">
+  </div>
+
+  <section id="share">
+    <p class="section-label">Share anything</p>
+    <h2 class="section-title">From one skill to a whole swarm</h2>
+    <p class="section-desc">
+      Whatever you built for your agents travels in one command: a single skill, an agent with
+      its memory, or a full team of agents. Your friend gets a working copy, not a zip file to untangle.
+    </p>
+    <div class="kinds-grid">
+      <div class="kind-card violet">
+        <div class="kind-art">
+          <svg viewBox="0 0 320 180" aria-hidden="true">
+            <path class="g-wire" d="M84 96h24M212 96h24"/>
+            <use href="#i-person" class="c-violet" x="34" y="72" width="46" height="46"/>
+            <text class="g-sub" x="57" y="138" font-size="11" text-anchor="middle">you</text>
+            <rect x="110" y="30" width="100" height="128" rx="10" fill="#17171b" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="160" y="56" font-size="11" text-anchor="middle" fill="#a78bfa" class="g-mono">SKILL.md</text>
+            <rect x="126" y="70" width="68" height="5" rx="2.5" fill="#2a2a30"/>
+            <rect x="126" y="83" width="54" height="5" rx="2.5" fill="#2a2a30"/>
+            <rect x="126" y="96" width="62" height="5" rx="2.5" fill="#2a2a30"/>
+            <rect x="126" y="109" width="40" height="5" rx="2.5" fill="#2a2a30"/>
+            <rect x="126" y="128" width="68" height="16" rx="5" fill="#a78bfa" fill-opacity=".12"/>
+            <text x="160" y="140" font-size="9" text-anchor="middle" fill="#a1a1aa">CHANGELOG.md</text>
+            <rect x="180" y="16" width="60" height="22" rx="11" fill="#8b5cf6"/>
+            <text x="210" y="31" font-size="11" text-anchor="middle" fill="#fff" font-weight="600">v1.2.0</text>
+            <use href="#i-person" class="c-cyan" x="240" y="72" width="46" height="46"/>
+            <text class="g-sub" x="263" y="138" font-size="11" text-anchor="middle">@bob</text>
+          </svg>
+        </div>
+        <div class="kind-body">
+          <span class="kind-tag">Skill</span>
+          <h3>One skill, versioned</h3>
+          <p>Friends install it for Claude Code, Codex and Gemini at once and get every new version with one pull.</p>
+          <ul><li>SKILL.md + files</li><li>versions</li><li>changelog</li><li>summary</li></ul>
+          <div class="kind-cmd"><span>$</span> skylls share pdf @bob</div>
+        </div>
+      </div>
+
+      <div class="kind-card cyan">
+        <div class="kind-art">
+          <svg viewBox="0 0 320 180" aria-hidden="true">
+            <path class="g-wire" d="M124 88C146 88 146 40 168 40M124 88C146 88 146 72 168 72M124 88C146 88 146 104 168 104M124 88C146 88 146 141 168 141"/>
+            <use href="#i-bot" class="c-cyan" x="38" y="44" width="86" height="86"/>
+            <text class="g-title" x="81" y="150" font-size="13" text-anchor="middle">btc</text>
+            <rect class="g-row" x="168" y="28" width="124" height="24" rx="8"/>
+            <text x="182" y="44" font-size="11" fill="#a1a1aa" class="g-mono">CLAUDE.md</text>
+            <rect class="g-row" x="168" y="60" width="124" height="24" rx="8"/>
+            <text x="182" y="76" font-size="11" fill="#a1a1aa" class="g-mono">.claude/</text>
+            <rect class="g-row" x="168" y="92" width="124" height="24" rx="8"/>
+            <text x="182" y="108" font-size="11" fill="#a1a1aa" class="g-mono">scripts/</text>
+            <rect x="168" y="125" width="136" height="32" rx="10" fill="#8b5cf6" fill-opacity=".14" stroke="#a78bfa" stroke-opacity=".6"/>
+            <use href="#i-gem" class="c-violet" x="174" y="129" width="24" height="24"/>
+            <text x="201" y="145" font-size="10.5" fill="#c4b5fd">Obsidian memory</text>
+            <text class="g-sub" x="230" y="173" font-size="10" text-anchor="middle">never logs, data or secrets</text>
+          </svg>
+        </div>
+        <div class="kind-body">
+          <span class="kind-tag">Agent</span>
+          <h3>A whole agent, with its memory</h3>
+          <p>Its instructions, settings, scripts and Obsidian memory travel together. Runtime state stays home.</p>
+          <ul><li>definition</li><li>skills it uses</li><li>Obsidian memory</li></ul>
+          <div class="kind-cmd"><span>$</span> skylls agents share btc @bob</div>
+        </div>
+      </div>
+
+      <div class="kind-card amber">
+        <div class="kind-art">
+          <svg viewBox="0 0 320 180" aria-hidden="true">
+            <circle cx="160" cy="88" r="72" fill="none" stroke="#f59e0b" stroke-opacity=".25" stroke-dasharray="3 6"/>
+            <path class="g-wire" d="M160 88L77 47M160 88L243 47M160 88L77 129M160 88L243 129"/>
+            <use href="#i-bot" class="c-cyan" x="58" y="28" width="38" height="38"/>
+            <use href="#i-bot" class="c-violet" x="224" y="28" width="38" height="38"/>
+            <use href="#i-bot" class="c-green" x="58" y="110" width="38" height="38"/>
+            <use href="#i-bot" class="c-cyan" x="224" y="110" width="38" height="38"/>
+            <circle cx="160" cy="88" r="38" fill="#131316" stroke="#f59e0b" stroke-opacity=".5"/>
+            <use href="#i-bot" class="c-amber" x="131" y="58" width="58" height="58"/>
+            <text class="g-sub" x="160" y="172" font-size="11" text-anchor="middle">app-ideas · coordinator + 4 agents</text>
+          </svg>
+        </div>
+        <div class="kind-body">
+          <span class="kind-tag">Swarm</span>
+          <h3>A full team of agents</h3>
+          <p>Share the coordinator, every agent and their shared memory as one item. Your friend launches the same team.</p>
+          <ul><li>every agent</li><li>roles</li><li>shared memory</li></ul>
+          <div class="kind-cmd"><span>$</span> skylls swarms share app-ideas @carol</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="who">
+    <p class="section-label">Friends or agents</p>
+    <h2 class="section-title">Made for people and for their agents</h2>
+    <p class="section-desc">
+      Share with the friends you choose, item by item. Or let your agents do it: the skylls skill teaches
+      Claude Code, Codex and Gemini to find and install what they need on their own.
+    </p>
+    <div class="audience">
+      <div class="audience-card">
+        <h3><svg viewBox="0 0 40 40" class="c-violet"><use href="#i-person"/></svg>Friends</h3>
+        <svg class="art" viewBox="0 0 460 220" aria-hidden="true">
+          <path d="M230 105L70 48" stroke="#a78bfa" stroke-opacity=".5" stroke-width="1.5"/>
+          <path d="M230 105L390 48" stroke="#f59e0b" stroke-opacity=".5" stroke-width="1.5"/>
+          <path d="M230 105L70 172" stroke="#a78bfa" stroke-opacity=".5" stroke-width="1.5"/>
+          <path d="M230 105L390 172" stroke="#3f3f46" stroke-width="1.5" stroke-dasharray="4 6"/>
+          <circle cx="230" cy="105" r="36" fill="#8b5cf6" fill-opacity=".14" stroke="#a78bfa"/>
+          <use href="#i-person" class="c-violet" x="208" y="83" width="44" height="44"/>
+          <text class="g-title" x="230" y="160" font-size="13" text-anchor="middle">you</text>
+          <circle cx="70" cy="48" r="24" class="g-row" stroke="#a78bfa" stroke-opacity=".5"/>
+          <use href="#i-person" class="c-violet" x="54" y="32" width="32" height="32"/>
+          <text class="g-sub" x="70" y="90" font-size="11" text-anchor="middle">@bob</text>
+          <circle cx="390" cy="48" r="24" class="g-row" stroke="#f59e0b" stroke-opacity=".5"/>
+          <use href="#i-person" class="c-amber" x="374" y="32" width="32" height="32"/>
+          <text class="g-sub" x="390" y="90" font-size="11" text-anchor="middle">@carol</text>
+          <circle cx="70" cy="172" r="24" class="g-row" stroke="#a78bfa" stroke-opacity=".5"/>
+          <use href="#i-person" class="c-violet" x="54" y="156" width="32" height="32"/>
+          <text class="g-sub" x="70" y="213" font-size="11" text-anchor="middle">@ana</text>
+          <circle cx="390" cy="172" r="24" class="g-row"/>
+          <use href="#i-person" class="c-dim" x="374" y="156" width="32" height="32"/>
+          <text class="g-sub" x="390" y="213" font-size="11" text-anchor="middle">@dan</text>
+          <rect x="114" y="66" width="76" height="20" rx="10" fill="#17171b" stroke="#a78bfa"/>
+          <text x="152" y="80" font-size="10.5" text-anchor="middle" fill="#c4b5fd">pdf + btc</text>
+          <rect x="270" y="66" width="80" height="20" rx="10" fill="#17171b" stroke="#f59e0b"/>
+          <text x="310" y="80" font-size="10.5" text-anchor="middle" fill="#fbbf24">app-ideas</text>
+          <rect x="122" y="128" width="56" height="20" rx="10" fill="#17171b" stroke="#a78bfa"/>
+          <text x="150" y="142" font-size="10.5" text-anchor="middle" fill="#c4b5fd">pdf</text>
+          <rect x="270" y="128" width="84" height="20" rx="10" fill="#17171b" stroke="#3f3f46"/>
+          <text x="312" y="142" font-size="10.5" text-anchor="middle" fill="#71717a">nothing yet</text>
+        </svg>
+        <p>Each friend sees only what you shared with them, nothing else. They can suggest changes; you decide what goes into the next version.</p>
+      </div>
+      <div class="audience-card">
+        <h3><svg viewBox="0 0 40 40" class="c-cyan"><use href="#i-bot"/></svg>Agents</h3>
+        <div class="agent-term" aria-label="An agent finds and installs a shared skill by itself">
+          <div class="say">agent › I need to fill in a PDF form.</div>
+          <div class="cmd"><b>$</b> skylls find pdf --json</div>
+          <div class="out">{"name":"pdf","owner":"you-skylls","version":"1.2.0",</div>
+          <div class="out"> "summary":"Reads and fills PDF forms"}</div>
+          <div class="cmd"><b>$</b> skylls add pdf -g -a claude</div>
+          <div class="ok">✓ Installed 'pdf' → ~/.claude/skills/pdf</div>
+          <div class="say">agent › Got it. Filling the form with the pdf skill…</div>
+        </div>
+        <p>Agents read compact <code style="color:var(--accent)">--json</code> and follow the skylls skill, so a friend's agent can pick up the skill you just shared without anyone copying files around.</p>
+      </div>
+    </div>
   </section>
 
   <section id="features">

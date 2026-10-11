@@ -3,6 +3,23 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.6.0 — 2026-10-10
+
+- **Landing page graphics** that show what skylls shares and with whom:
+  an animated share map under the hero (your skill, agent and swarm go
+  through private repos and a secret scan to friends and to agents), a new
+  "From one skill to a whole swarm" section with an illustration per kind,
+  and a "Friends or agents" section (per-friend access map and an agent
+  finding and installing a skill on its own). Inline SVG and CSS only, no
+  new files or dependencies; animations stop with reduced motion.
+- **New `/network.svg`** and a "People and agents, sharing with each other"
+  section: an animated network of people and AI agents (Claude Code, Codex,
+  Gemini, a swarm) around skylls, with skills, agents and swarms travelling
+  between them through private repos. A standalone SVG, usable in the README
+  or on social posts too.
+- Title now reads "Share skills, agents and whole swarms, one private repo
+  at a time"; new "Network" and "Share" links in the nav.
+
 ## webapp 1.5.0 — 2026-10-09
 
 - **New `/llms.txt`**: the whole guide as plain Markdown for AI agents (what

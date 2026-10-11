@@ -14,6 +14,7 @@ const ASSETS = {
   "/consent.js": "text/javascript; charset=utf-8",
   "/llms.txt": "text/markdown; charset=utf-8",
   "/skill.md": "text/markdown; charset=utf-8",
+  "/network.svg": "image/svg+xml",
 };
 const REDIRECTS = { "/doc": "/docs" };
 
