@@ -19,6 +19,8 @@ If results look wrong or a command is missing, check for a newer skylls: `skylls
     skylls agents find <keywords> --json --limit 5   # agents (also: skylls swarms find …)
     skylls find --folder <folder> --json             # everything in a folder
     skylls installed --json                          # installed skills; "newer" = update available
+    skylls shared --json [@user]                     # shared by the user ("with", "pending") / with the user ("pending" = not accepted yet)
+    skylls people --json                             # per person: you_share, they_share, waiting (+ accept command)
 Fields: name, owner, folder, version, summary, updated, installed, published (false = not published yet).
 
 ## 2. Install
@@ -37,7 +39,9 @@ Read an installed SKILL.md only when you are about to use it.
     skylls push <name> -m "what changed"             # skill → its own private repo (<org>/skill-<name>)
     skylls agents push <name> -m "what changed"      # ~/agents/<name> (also: swarms push)
     skylls share <name> @user                        # one item to one person (agents share …)
+    skylls unshare <name> @user                      # take one item back; skylls revoke @user = everything
     skylls source add <friend>                       # see what a friend shared with the user
+    skylls sync -m "what changed"                    # publish all the user's changed items + install friends' new versions
     skylls suggest <name> --from <owner> "idea"      # improve someone else's item
 - Push scans for API keys and personal data and refuses if it finds any: remove them, never use --skip-scan on your own.
 - Sharing access and removing things are the user's decisions; never do them unprompted.

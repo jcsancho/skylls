@@ -70,6 +70,7 @@ maintained in one place by its owner.
     skylls add pdf                         # this project only: ./.claude/skills/pdf
     skylls add pdf --from alice            # when two owners have the same name
     skylls pull --update                   # install newer versions of installed skills
+    skylls sync -m "what changed"          # publish your changed items, then install friends' new versions
 
 Where skills go (project `./` or global `~/` with `-g`):
 
@@ -105,7 +106,10 @@ Obsidian memory; a swarm is a team of agents. Same commands under `skylls agents
 
 - Folders group items (GitHub topics): `skylls move pdf docs`, `skylls list -f docs`,
   `skylls folder rename old new`.
-- Unshare: `skylls unshare pdf @bob`. What Bob already installed stays on his machine.
+- Unshare: `skylls unshare pdf @bob`; `skylls revoke @bob` takes back everything you shared
+  with Bob (asks first; `-y` doesn't). What Bob already installed stays on his machine.
+- Who shares what: `skylls shared [@user]` (yours and with whom, friends' with you, invites
+  not accepted yet both ways); `skylls people` (per person, what goes each way).
 
 ## 6. JSON output (few tokens)
 
@@ -117,6 +121,8 @@ errors go to stderr. `find --json` returns at most 10 results unless you pass `-
 
     skylls installed --json        # installed skills; "newer" when an update exists
     skylls log pdf --json          # owner, versions, what changed
+    skylls shared --json           # {"shared":"by_you"|"with_you", ...}; "pending" = not accepted yet
+    skylls people --json           # per person: you_share, pending_from_you, they_share, waiting
 
 Add `--dry-run` to any command that changes files or GitHub to preview it.
 
@@ -141,10 +147,14 @@ Add `--dry-run` to any command that changes files or GitHub to preview it.
     log <name> [--from O]                   who made it, versions, what changed
     installed [-g] [-a A]                   installed skills and newer versions
     pull [--update]                         check for (and install) newer versions
+    sync [-m msg] [--skip-scan]             publish your changed items + install friends' new versions
     remove <name> [-g] [-a A]               remove a local copy
     push <name|path> [-m msg] [--minor|--major] [--about text] [--folder F] [--skip-scan]
     share <name> @user… | --all @user       let friends install it (no users: who has access)
-    unshare <name> @user… | --all @user     revoke access
+    unshare <name> @user… | --all @user     revoke access to one item
+    revoke @user… [-y]                      take back everything you shared with them
+    shared [@user…]                         what you shared (with whom) and what's shared with you
+    people                                  who you share with / who shares with you, and what
     move <name> <folder>                    put it in a folder (. = none)
     folder [rename old new | remove F]      your folders
     source [add|remove] <login>             friends whose shares you see

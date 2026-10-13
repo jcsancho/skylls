@@ -610,13 +610,17 @@ Every item you publish gets its own private GitHub repo; you share item by item.
   {GREEN}log{NC} <name> [--from O]              Who made it, versions, what changed
   {GREEN}installed{NC} [-g] [-a A]              Installed skills (and newer versions)
   {GREEN}pull{NC} [--update]                    Check for new versions (--update: install them)
+  {GREEN}sync{NC} [-m msg]                      Publish your changes + get friends' new versions
   {GREEN}remove{NC} <name>                      Remove from this computer (agents/swarms: to the Trash)
   {GREEN}search{NC} <query>                     Public skills on skills.sh (add owner/repo/skill)
 
 {CYAN}PUBLISH & SHARE:{NC}
   {GREEN}push{NC} <name> [-m msg]               Publish a new version to its private repo
   {GREEN}share{NC} <name> @user… | --all @user  Let friends install it (no users: who has access)
-  {GREEN}unshare{NC} <name> @user…              Revoke access
+  {GREEN}unshare{NC} <name> @user…              Revoke access to one item
+  {GREEN}revoke{NC} @user… [-y]                 Take back everything you shared with them
+  {GREEN}shared{NC} [@user…]                    What you shared (with whom) and what's shared with you
+  {GREEN}people{NC}                             Who you share with / who shares with you, and what
   {GREEN}move{NC} <name> <folder>               Put it in a folder (a GitHub topic; '.' = none)
   {GREEN}folder{NC} [rename|remove]             Your folders
   {GREEN}source{NC} [add|remove] <login>        Friends whose shares you see (accepts their invites)
@@ -695,6 +699,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("source", help="Friends whose shared items you see.")
     sp.add_argument("action", nargs="?", choices=["add", "remove"])
     sp.add_argument("owner", nargs="?")
+    sp = sub.add_parser("sync", help="Publish your changes, then install newer versions of what friends shared.")
+    sp.add_argument("-m", "--message", help="What changed (logged with each new version; asked if omitted).")
+    sp.add_argument("--skip-scan", action="store_true", help="Publish without the secret scan.")
+    sp = sub.add_parser("revoke", help="Take back everything you shared with these users.")
+    sp.add_argument("users", nargs="+", metavar="@user")
+    sp.add_argument("-y", "--yes", action="store_true", help="Don't ask first.")
+    sub.add_parser("people", help="Who you share with and who shares with you (and what).")
+    sp = sub.add_parser("shared", help="What you shared (and with whom) and what friends shared with you.")
+    sp.add_argument("users", nargs="*", metavar="@user", help="Only what you share with / get from these users.")
     sp = sub.add_parser("folder", help="Your folders (GitHub topics): list, rename or remove.")
     sp.add_argument("action", nargs="?", choices=["rename", "remove"])
     sp.add_argument("names", nargs="*")
@@ -753,6 +766,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         kinds.cmd_pull(cfg, args.update, args.agent, args.is_global, args.dry_run)
     elif args.cmd == "source":
         kinds.cmd_source(cfg, args.action, args.owner, args.dry_run)
+    elif args.cmd == "sync":
+        kinds.cmd_sync(cfg, args.message, args.skip_scan, args.dry_run)
+    elif args.cmd == "revoke":
+        kinds.cmd_revoke(cfg, args.users, args.yes, args.dry_run)
+    elif args.cmd == "people":
+        kinds.cmd_people(cfg)
+    elif args.cmd == "shared":
+        kinds.cmd_shared(cfg, args.users)
     elif args.cmd == "folder":
         kinds.cmd_folder(cfg, args.action, args.names, args.dry_run)
     elif args.cmd == "add" and args.name.count("/") == 2:

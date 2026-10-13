@@ -106,6 +106,9 @@ skylls add pdf@1.2.0                # an older version
 skylls log pdf                      # who made it, every version, what changed
 skylls installed                    # installed skills, flags newer versions
 skylls pull --update                # install newer versions
+skylls sync -m "Small fixes"        # publish every published item you changed (skills, agents,
+                                    # swarms; each one scanned), then install the newer versions
+                                    # of skills, agents and swarms friends shared with you
 skylls remove pdf                   # remove your local copy (never touches GitHub)
 ```
 
@@ -194,6 +197,11 @@ skylls share pdf @bob @carol        # invite to one item
 skylls share --all @bob             # every skill you published (agents/swarms: skylls agents share --all @bob)
 skylls share pdf                    # who has access
 skylls unshare pdf @bob             # revoke (what Bob installed stays on his machine)
+skylls revoke @bob                  # take back everything (skills, agents, swarms, pending invites)
+skylls shared                      # what you shared and with whom + what friends shared with you
+skylls shared @bob                 # only between you and Bob
+                                   # (also lists invites not accepted yet, both ways)
+skylls people                      # each person: what you share with them, what they share with you
 
 skylls source add alice             # see what alice shared with you (accepts her invites)
 skylls source                       # your friends and how many items each shared
@@ -323,10 +331,14 @@ Add `--dry-run` to any command to see what it would do without changing anything
 | `log <name> [--from O]` | Who made it, versions, what changed |
 | `installed [-g] [-a A]` | Installed skills and newer versions |
 | `pull [--update]` | Check for (and install) newer versions |
+| `sync [-m msg] [--skip-scan]` | Publish your changed items, then install friends' newer versions |
 | `remove <name> [-g] [-a A]` | Remove a local skill copy |
 | `push <name\|path> [-m msg] [--minor\|--major] [--about text] [--folder F] [--skip-scan]` | Publish a new version to its private repo |
 | `share <name> @user… \| --all @user` | Let friends install it (no users: who has access) |
 | `unshare <name> @user… \| --all @user` | Revoke access |
+| `shared [@user…]` | What you shared (with whom) and what friends shared with you |
+| `revoke @user… [-y]` | Take back every skill, agent and swarm you shared with them |
+| `people` | Who you share with and who shares with you, and what goes each way |
 | `move <name> <folder>` | Put it in a folder (`.` = none) |
 | `folder [rename old new \| remove F]` | Your folders |
 | `source [add\|remove] <login>` | Friends whose shares you see |

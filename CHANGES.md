@@ -3,6 +3,35 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.5.0 — 2026-10-13
+
+- **`skylls sync`** keeps everything in step with GitHub in one go: it
+  publishes a new version of each skill, agent and swarm you already
+  published and changed since (each one scanned for secrets; one refused item
+  doesn't stop the rest), then installs the newer versions of the skills,
+  agents and swarms friends shared with you (your memory copies are kept).
+  `-m` gives the log entry for every new version; `--dry-run` shows what it
+  would do.
+- **`skylls revoke @user`** takes back everything you shared with someone:
+  every skill, agent and swarm they can use and the invites they haven't
+  accepted. It lists them and asks first (`-y` doesn't ask; `--dry-run`
+  only lists). One item is still `skylls unshare <name> @user`.
+- **`skylls people`**: one line per person you share with or who shares
+  with you (or whom you added as a source), with what you share with them,
+  what they share with you and what waits for you to accept.
+- **`skylls shared`** shows in one place which skills, agents and swarms you
+  shared and with whom (pending invites included), and which ones friends
+  shared with you, grouped by friend. `skylls shared @bob` shows only what
+  you and Bob share with each other. Works with `--json`.
+- It also lists what isn't accepted yet: your invites a friend hasn't
+  accepted (with the date sent), and items people shared with you that wait
+  for you, with the `skylls source add <owner>` that accepts them.
+
+## webapp 1.8.0 — 2026-10-13
+
+- `/docs`, `/llms.txt` and `/skill.md` cover `skylls sync`, `shared`,
+  `people` and `revoke`.
+
 ## 1.4.0 — 2026-10-11
 
 - **New npm name: `@skylls/cli`** (`npm install -g @skylls/cli`). `skylls

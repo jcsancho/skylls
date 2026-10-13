@@ -41,11 +41,15 @@ s list; s folder | head -4; sj find pdf; sj log pdf | head -c 300; echo
 mkdir -p $HOME/agents/draft; echo "# draft agent not published yet" > $HOME/agents/draft/CLAUDE.md; s agents list
 echo "--- share pdf + btc with bob (not notes)"
 s share pdf @bob | grep -E "Invited|add you"; s agents share btc @bob | grep Invited
+echo "--- alice: shared (bob hasn't accepted yet)"; s shared
 
 echo "######## BOB"; user bob
 s setup --agents claude --no-agent-skill >/dev/null
 echo "--- list before adding alice"; s list | grep -E "shared|No skills"
+echo "--- bob: shared before adding alice (waiting for him)"; s shared | grep -A3 Waiting; sj shared; s people
 echo "--- source add alice"; s source add alice | grep -E "Accepted|Added"
+echo "--- bob: shared after"; s shared; s shared @carol | grep -E "Nothing"
+user alice; echo "--- alice: shared @bob after he accepted"; s shared @bob | grep "→"; sj shared | head -2; s people; user bob
 s list; s agents list
 echo "--- notes is not visible"; s add notes --from alice | tail -1
 echo "--- install"; s add pdf --from alice -g -a all | grep -E "Installed|Linked"
@@ -57,6 +61,14 @@ echo "v3" >> $HOME/.claude/skills/pdf/SKILL.md; s push pdf -m "v3" --skip-scan |
 user bob
 sj installed | grep pdf; s pull --update | grep -E "→|Installed"; sj installed | grep pdf
 s add pdf@1.0.0 --from alice -y | grep Installed; grep -m1 "^## " $HOME/.claude/skills/pdf/CHANGELOG.md
+echo "--- sync: alice publishes her changes, bob gets them"; user alice
+echo "Syncs." >> $HOME/.claude/skills/pdf/SKILL.md; echo "more" >> $HOME/agents/btc/CLAUDE.md
+s sync -m "Synced" --skip-scan | grep -E "Published|up to date|Sync done"
+user bob; s sync | grep -E "→|Updated from|Published:"; sj installed | grep pdf
+grep -m1 "^## " $HOME/agents/btc/CHANGELOG.md; s sync | grep "Updated from"
+echo "--- revoke: alice takes back everything from bob, then shares again"; user alice
+s revoke @bob --dry-run | grep -E "•|Would"; s revoke @bob -y | grep -E "Revoked"; s revoke @bob | tail -1
+s share pdf @bob >/dev/null; s agents share btc @bob | grep Invited; user bob; s list >/dev/null
 echo "--- bob suggests"; s suggest pdf --from alice "Support Excel" | grep Sent
 echo "--- bob can't share/accept alice's"; s share pdf @eve | tail -1
 
@@ -83,7 +95,7 @@ echo "######## remove agent, old config migration"; user bob
 s agents remove btc -y | tail -1
 mkdir -p $T/home/dave/.config/skylls; echo '{"repo": "dave/skills", "agents": ["codex"], "kinds": {}}' > $T/home/dave/.config/skylls/config.json
 user dave; s list | grep -E "quick setup|published to" | head -2; python3 -c "import json;print('  migrated:', json.load(open('$HOME/.config/skylls/config.json')))"
-echo "--- all --json lines valid"; for c in "list" "find pdf" "installed" "agents list" "suggestions"; do user alice; sj $c | python3 -c "import sys,json;[json.loads(l) for l in sys.stdin if l.strip()];print('  ok:', '$c')"; done
+echo "--- all --json lines valid"; for c in "list" "find pdf" "installed" "agents list" "suggestions" "shared" "people"; do user alice; sj $c | python3 -c "import sys,json;[json.loads(l) for l in sys.stdin if l.strip()];print('  ok:', '$c')"; done
 echo "--- --json / --dry-run after the command (as the skill writes them)"; user alice
 python3 -m skylls find pdf --json --limit 1 2>/dev/null | python3 -c "import sys,json;print('  ok: find pdf --json ->', json.loads(sys.stdin.readline())['name'])"
 python3 -m skylls agents list --json 2>/dev/null | python3 -c "import sys,json;[json.loads(l) for l in sys.stdin if l.strip()];print('  ok: agents list --json')"

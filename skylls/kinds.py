@@ -33,6 +33,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -284,8 +285,8 @@ def graphql(query: str, **variables: str) -> dict:
     return gh_json(res)["data"]
 
 
-def accept_invites(owners: set) -> Tuple[int, Dict[str, int]]:
-    """Accept pending invites to skylls repos from these owners; count the others by owner."""
+def accept_invites(owners: set) -> Tuple[int, Dict[str, List[dict]]]:
+    """Accept pending invites to skylls repos from these owners; list the others by owner."""
     invites = gh_json(core.gh_api("user/repository_invitations", "--paginate")) or []
     accepted, waiting = 0, {}
     for inv in invites:
@@ -298,18 +299,22 @@ def accept_invites(owners: set) -> Tuple[int, Dict[str, int]]:
             if core.gh_api("-X", "PATCH", f"user/repository_invitations/{inv['id']}").returncode == 0:
                 accepted += 1
         else:
-            waiting[owner] = waiting.get(owner, 0) + 1
+            kind, name = item_of(repo)
+            waiting.setdefault(owner, []).append({"kind": kind, "name": name, "repo": repo, "inviter": inviter,
+                                                  "invited": (inv.get("created_at") or "")[:10]})
     return accepted, waiting
 
 
-def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None) -> List[dict]:
-    """Items you and your friends published (that you can see), fresh from GitHub once per run."""
+def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, quiet: bool = False) -> List[dict]:
+    """Items you and your friends published (that you can see), fresh from GitHub once per run.
+    Invites from people who aren't your friends yet are kept in _catalog["waiting"] (quiet: don't mention them)."""
     if "all" not in _catalog:
         owners = {cfg["owner"].lower(), cfg["login"].lower()} | {f.lower() for f in cfg.get("friends", [])}
         accepted, waiting = accept_invites(owners)
         if accepted:
             ok(f"Accepted {accepted} new share{'s' if accepted != 1 else ''} from your friends.")
-        for who, n in waiting.items():
+        _catalog["waiting"] = waiting
+        for who, n in ((w, len(items)) for w, items in waiting.items() if not quiet):
             info(f"@{who} shared {n} item{'s' if n != 1 else ''} with you: skylls source add {who}")
         repos, cursor = [], ""
         while True:
@@ -1078,21 +1083,88 @@ def cmd_installed(cfg: dict, agent: Optional[str], is_global: Optional[bool]) ->
         info("No skills installed here. Find some with: skylls list")
 
 
-def cmd_pull(cfg: dict, update: bool, agent: Optional[str], is_global: Optional[bool], dry_run: bool) -> None:
+def cmd_pull(cfg: dict, update: bool, agent: Optional[str], is_global: Optional[bool], dry_run: bool) -> List[str]:
+    """Check for new versions; with update, install them for installed skills (returns what was updated)."""
     section("Checking for new versions")
     items = catalog(cfg)
     ok(f"{len(items)} items you can install ({sum(1 for r in items if r['mine'])} yours)")
+    done: List[str] = []
     if not update:
-        return
+        return done
+    seen = set()
     for row in installed_skills(cfg, agent, is_global):
         r = latest_for(cfg, row) if not row["link"] else None
-        if newer(row, r):
+        where = (row["dir"] / row["name"]).resolve()  # run from ~, the project and global folders are one
+        if newer(row, r) and where not in seen:
+            seen.add(where)
             info(f"{row['name']}: v{row['version'] or '-'} → v{r['version']}")
             with tempfile.TemporaryDirectory() as tmp:
                 src, _, log = extract("skills", r, None, Path(tmp))
                 log["source"] = f"{r['repo']} v{r['version']}"
                 core.write_changelog(src, r["name"], log)
                 core.copy_skill(src, row["dir"], row["name"], dry_run, force=True)
+            done.append(f"skill {row['name']} v{r['version']}")
+    return done
+
+
+def local_original(cfg: dict, kind: str, name: str) -> Optional[Path]:
+    """Your own local copy of one of your published items (not a download), if it is on this computer."""
+    if kind == "skills":
+        try:
+            src = core.find_installed(cfg, name, None, None)
+        except SystemExit:
+            return None
+    else:
+        src = local_item(cfg, kind, name)
+    return src if is_item(kind, src) and not src.is_symlink() and not core.read_changelog(src)["source"] else None
+
+
+def installed_version(path: Path) -> Optional[str]:
+    log = core.read_changelog(path)
+    return log["entries"][0]["version"] if log["entries"] else None
+
+
+def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool) -> None:
+    """Publish what changed in your published items, then install newer versions of what friends shared."""
+    published, updated, failed = [], [], []
+    mine_ = [r for r in catalog(cfg) if r["mine"]]
+    section(f"Publishing your changes ({len(mine_)} published items)")
+    for r in mine_:
+        src = local_original(cfg, r["kind"], r["name"])
+        if not src:
+            continue
+        before = installed_version(src)
+        try:
+            publish(cfg, r["kind"], src, message, "patch", None, None, skip_scan, dry_run)
+        except SystemExit:  # e.g. the secret scan found something: the others still go
+            failed.append(f"{one(r['kind'])} {r['name']}")
+            continue
+        if installed_version(src) != before:
+            published.append(f"{one(r['kind'])} {r['name']} v{installed_version(src)}")
+    section("Getting newer versions of what friends shared with you")
+    updated += cmd_pull(cfg, True, None, None, dry_run)  # skills
+    by_repo = {r["repo"].lower(): r for r in catalog(cfg) if not r["mine"]}
+    for kind in ("agents", "swarms"):
+        root = Path(cfg["dirs"][kind]).expanduser()
+        for item in sorted(root.iterdir()) if root.is_dir() else []:
+            source = core.read_changelog(item)["source"] if is_item(kind, item) else ""
+            r = by_repo.get(source.split(" ")[0].lower()) if source else None
+            if r and newer({"version": installed_version(item)}, r):
+                info(f"{one(kind)} {item.name}: v{installed_version(item) or '-'} → v{r['version']}")
+                try:
+                    cmd_add_item(cfg, kind, r["name"], r["owner"], item.name, True, False, dry_run)
+                except SystemExit:
+                    failed.append(f"{one(kind)} {item.name}")
+                    continue
+                updated.append(f"{one(kind)} {item.name} v{r['version']}")
+    section("Sync done" + (" (dry run)" if dry_run else ""))
+    if not dry_run:
+        ok(f"Published: {', '.join(published) or 'nothing changed'}")
+    ok(f"Updated from friends: {', '.join(updated) or 'everything is up to date'}")
+    if failed:
+        warn(f"Not synced (see above): {', '.join(failed)}")
+    if core.JSON_MODE:
+        emit({"published": published, "updated": updated, "failed": failed})
 
 
 # ── Sharing ────────────────────────────────────────────────────────────────
@@ -1162,6 +1234,159 @@ def cmd_unshare(cfg: dict, kind: str, name: Optional[str], users: List[str], all
                 if member:
                     core.gh_api("-X", "DELETE", f"repos/{repo}/collaborators/{user}")
                 ok(f"Revoked @{user} (copies they installed stay on their machine)")
+
+
+def shared_with(cfg: dict, repo: str) -> List[dict]:
+    """Who besides you can use one of your repos: collaborators and pending invites."""
+    me = {cfg["owner"].lower(), cfg["login"].lower()}
+    people = [{"login": c["login"], "role": c.get("role_name", "")}
+              for c in gh_json(core.gh_api(f"repos/{repo}/collaborators", "--paginate")) or []
+              if c["login"].lower() not in me]
+    invites = gh_json(core.gh_api(f"repos/{repo}/invitations", "--paginate")) or []
+    return people + [{"login": i["invitee"]["login"], "pending": True, "invite_id": i["id"],
+                      "invited": (i.get("created_at") or "")[:10]}
+                     for i in invites if i.get("invitee")]
+
+
+def sharing(cfg: dict, only: set) -> Tuple[List[Tuple[dict, List[dict]]], List[dict], List[dict]]:
+    """(your items with who can use them, items shared with you, invites to you not accepted yet)."""
+    rows = catalog(cfg, quiet=True)
+    mine_ = [r for r in rows if r["mine"]]
+    with ThreadPoolExecutor(max_workers=8) as pool:  # two GitHub calls per item: do them side by side
+        access = list(pool.map(lambda r: shared_with(cfg, r["repo"]), mine_))
+    by_you = [(r, [p for p in people if not only or p["login"].lower() in only]) for r, people in zip(mine_, access)]
+    by_you = [(r, people) for r, people in by_you if people or not only]
+    with_you = [mark_installed(cfg, r["kind"], dict(r)) for r in rows
+                if not r["mine"] and (not only or r["owner"].lower() in only)]
+    waiting = [w for who, items in _catalog.get("waiting", {}).items() for w in items
+               if not only or {who.lower(), w["inviter"].lower()} & only]
+    return by_you, with_you, waiting
+
+
+def cmd_shared(cfg: dict, users: List[str]) -> None:
+    """Skills, agents and swarms you shared (and with whom), and those friends shared with you."""
+    only = {u.lower() for u in core.github_users(users)}
+    by_you, with_you, waiting = sharing(cfg, only)
+    if core.JSON_MODE:
+        for r, people in by_you:
+            emit({"shared": "by_you", "kind": one(r["kind"]), "name": r["name"], "repo": r["repo"],
+                  "with": [p["login"] for p in people if not p.get("pending")],
+                  "pending": [p["login"] for p in people if p.get("pending")]})
+        for r in with_you:
+            emit({"shared": "with_you", "kind": one(r["kind"]), **public(r)})
+        for w in waiting:
+            emit({"shared": "with_you", "pending": True, **w, "kind": one(w["kind"]),
+                  "accept": f"skylls source add {w['repo'].split('/')[0]}"})
+        return
+    section("Shared by you" + (f" with {', '.join('@' + u for u in sorted(only))}" if only else ""))
+    for r, people in by_you:
+        if people:
+            who = ", ".join(f"{CYAN}@{p['login']}{NC}" + (f" {YELLOW}(invite pending"
+                            f"{', sent ' + p['invited'] if p.get('invited') else ''}){NC}" if p.get("pending") else "")
+                            for p in people)
+            say(f"  {GREEN}•{NC} {one(r['kind'])} {CYAN}{r['name']}{NC} → {who}")
+    private = [f"{one(r['kind'])} {r['name']}" for r, people in by_you if not people]
+    if private:
+        say(f"  {BLUE}Not shared with anyone ({len(private)}):{NC} {', '.join(private)}")
+    if not by_you:
+        info("Nothing yet. Share with: skylls share <name> @user")
+    section("Shared with you" + (f" by {', '.join('@' + u for u in sorted(only))}" if only else ""))
+    owners: Dict[str, List[dict]] = {}
+    for r in with_you:
+        owners.setdefault(r["owner"], []).append(r)
+    for who in sorted(owners, key=str.lower):
+        say(f"  {BLUE}From {who}{NC}")
+        for r in owners[who]:
+            print_record({**r, "name": f"{one(r['kind'])} {r['name']}"}, 4)
+    if not with_you and not waiting:
+        info("Nothing yet. When a friend shares with you: skylls source add <their-login>")
+    if waiting:
+        section("Waiting for you (shared with you, not accepted yet)")
+        for w in waiting:
+            owner = w["repo"].split("/")[0]
+            when = f", {w['invited']}" if w.get("invited") else ""
+            say(f"  {YELLOW}•{NC} {one(w['kind'])} {CYAN}{w['name']}{NC} from {CYAN}@{w['inviter'] or owner}{NC}{when}"
+                f"  → accept: skylls source add {owner}")
+
+
+def cmd_revoke(cfg: dict, users: List[str], force: bool, dry_run: bool) -> None:
+    """Take back everything you shared with these users: every skill, agent and swarm, and pending invites."""
+    logins = core.github_users(users)
+    if not logins:
+        die("Whose access? skylls revoke @user… (one item only: skylls unshare <name> @user)")
+    if {u.lower() for u in logins} & {cfg["owner"].lower(), cfg["login"].lower()}:
+        die("You can't revoke your own access.")
+    items = [(r, people) for r, people in sharing(cfg, {u.lower() for u in logins})[0] if people]
+    if not items:
+        ok(f"You share nothing with {', '.join('@' + u for u in logins)}.")
+        return
+    section(f"Revoking {', '.join('@' + u for u in logins)}: {len(items)} item{'s' if len(items) != 1 else ''}")
+    for r, people in items:
+        say(f"  {GREEN}•{NC} {one(r['kind'])} {CYAN}{r['name']}{NC} → "
+            + ", ".join(f"@{p['login']}" + (" (invite pending)" if p.get("pending") else "") for p in people))
+    if dry_run:
+        info("Would revoke all of the above.")
+        return
+    if not force:
+        if not sys.stdin.isatty():
+            die("Add -y to revoke without being asked.")
+        if input(f"  {YELLOW}?{NC} Revoke all of these? (y/N): ").strip().lower() != "y":
+            die("Nothing was changed.")
+    for r, people in items:
+        for p in people:
+            res = core.gh_api("-X", "DELETE", f"repos/{r['repo']}/invitations/{p['invite_id']}" if p.get("pending")
+                              else f"repos/{r['repo']}/collaborators/{p['login']}")
+            if res.returncode != 0:
+                fail(f"{r['name']} @{p['login']}: {(res.stderr or res.stdout).strip()}")
+    ok("Revoked (copies they installed stay on their machine)")
+    if core.JSON_MODE:
+        emit({"revoked": [f"{one(r['kind'])} {r['name']}" for r, _ in items], "users": logins})
+
+
+def cmd_people(cfg: dict) -> None:
+    """Everyone you share with or who shares with you, and what goes each way."""
+    by_you, with_you, waiting = sharing(cfg, set())
+    friends = {f.lower() for f in cfg.get("friends", [])}
+    people: Dict[str, dict] = {}
+
+    def person(login: str) -> dict:
+        return people.setdefault(login.lower(), {"login": login, "you_share": [], "pending_from_you": [],
+                                                 "they_share": [], "waiting": [], "accept": ""})
+    for r, who in by_you:
+        for p in who:
+            person(p["login"])["pending_from_you" if p.get("pending") else "you_share"].append(
+                f"{one(r['kind'])} {r['name']}")
+    for r in with_you:
+        person(r["owner"])["they_share"].append(f"{one(r['kind'])} {r['name']}")
+    for w in waiting:
+        p = person(w["inviter"] or w["repo"].split("/")[0])
+        p["waiting"].append(f"{one(w['kind'])} {w['name']}")
+        p["accept"] = f"skylls source add {w['repo'].split('/')[0]}"
+    for f in cfg.get("friends", []):
+        person(f)
+    rows = sorted(people.values(), key=lambda p: p["login"].lower())
+    for p in rows:
+        p["source"] = p["login"].lower() in friends
+    if core.JSON_MODE:
+        for p in rows:
+            emit(p)
+        return
+    section("People you share with, and who share with you")
+    for p in rows:
+        say(f"  {GREEN}•{NC} {CYAN}@{p['login']}{NC}" + (f"  {BLUE}(your source){NC}" if p["source"] else ""))
+        if p["you_share"] or p["pending_from_you"]:
+            pending = f"  {YELLOW}+ {len(p['pending_from_you'])} not accepted yet: " \
+                      f"{', '.join(p['pending_from_you'])}{NC}" if p["pending_from_you"] else ""
+            say(f"      you share {len(p['you_share'])}: {', '.join(p['you_share']) or '-'}{pending}")
+        if p["they_share"]:
+            say(f"      they share {len(p['they_share'])} with you: {', '.join(p['they_share'])}")
+        if p["waiting"]:
+            say(f"      {YELLOW}waiting for you ({len(p['waiting'])}): {', '.join(p['waiting'])}{NC}"
+                f"  → accept: {p['accept']}")
+        if p["source"] and not p["they_share"]:
+            say("      nothing shared with you yet")
+    if not rows:
+        info("Nobody yet. Share with: skylls share <name> @user; a friend's shares: skylls source add <login>")
 
 
 def cmd_source(cfg: dict, action: Optional[str], owner: Optional[str], dry_run: bool) -> None:

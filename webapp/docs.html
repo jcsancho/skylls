@@ -388,8 +388,10 @@ skylls push ./path/to/skill               <span class="cm"># or publish a folder
 <pre><code>skylls installed               <span class="cm"># installed skills; flags the ones with a newer version</span>
 skylls pull                    <span class="cm"># check for newer versions</span>
 skylls pull --update           <span class="cm"># install them</span>
+skylls sync -m "Small fixes"   <span class="cm"># publish your changed items, then install friends' new versions</span>
 skylls add pdf@1.0.0           <span class="cm"># go back to an older version</span></code></pre>
         <p>Every version stays installable, so you can always go back.</p>
+        <p><code>skylls sync</code> does both directions in one go: it publishes a new version of every skill, agent and swarm you already published and changed since (each one is scanned for secrets; if one is refused, the others still go), then installs the newer versions of everything friends shared with you. Your copy of an agent's memory is kept. Add <code>--dry-run</code> to see what it would do.</p>
       </section>
 
       <!-- Agents and swarms -->
@@ -442,6 +444,7 @@ skylls swarms push marketing-team               <span class="cm"># ~/swarms/mark
 skylls share --all @bob        <span class="cm"># every skill you published</span>
 skylls share pdf               <span class="cm"># who has access</span>
 skylls unshare pdf @bob        <span class="cm"># revoke (what Bob installed stays on his machine)</span>
+skylls revoke @bob             <span class="cm"># take back everything you shared with Bob (asks first)</span>
 skylls agents share --all @bob <span class="cm"># every agent (swarms: skylls swarms share …)</span></code></pre>
         <ul>
           <li><strong>Who sees what:</strong> friends see <strong>only the items you shared with them</strong>, and GitHub enforces it. skylls invites them to single repos as <em>outside collaborators</em>, who can't see your other repos, even in the same organization.</li>
@@ -458,6 +461,11 @@ skylls agents share --all @bob <span class="cm"># every agent (swarms: skylls sw
 <pre><code>skylls source add alice        <span class="cm"># see what alice shared with you (accepts her invites)</span>
 skylls source                  <span class="cm"># your friends and how many items each shared</span>
 skylls source remove alice</code></pre>
+        <h3>Who shares what</h3>
+<pre><code>skylls shared                  <span class="cm"># what you shared and with whom, what friends shared with you</span>
+skylls shared @bob             <span class="cm"># only between you and Bob</span>
+skylls people                  <span class="cm"># per person: what you share with them, what they share with you</span></code></pre>
+        <p>Both also list what isn't accepted yet: your invites a friend hasn't accepted (with the date you sent them), and items shared with you that wait for you, with the <code>skylls source add</code> command that accepts them.</p>
         <p>Run <code>source add</code> once per friend (their GitHub login or organization). Later shares from that friend are accepted automatically. If someone you haven't added shares with you, <code>skylls list</code> tells you, and you decide whether to add them.</p>
       </section>
 
@@ -566,10 +574,14 @@ skylls add anthropics/skills/pdf -g        <span class="cm"># install straight f
             <tr><td><code>log &lt;name&gt; [--from O]</code></td><td>Who made it, versions, what changed</td></tr>
             <tr><td><code>installed [-g] [-a A]</code></td><td>Installed skills and newer versions</td></tr>
             <tr><td><code>pull [--update]</code></td><td>Check for (and install) newer versions</td></tr>
+            <tr><td><code>sync [-m msg] [--skip-scan]</code></td><td>Publish your changed items, then install friends' newer versions</td></tr>
             <tr><td><code>remove &lt;name&gt; [-g] [-a A]</code></td><td>Remove a local skill copy</td></tr>
             <tr><td><code>push &lt;name|path&gt; [-m msg] [--minor|--major] [--about text] [--folder F] [--skip-scan]</code></td><td>Publish a new version to its private repo</td></tr>
             <tr><td><code>share &lt;name&gt; @user… | --all @user</code></td><td>Let friends install it (no users: who has access)</td></tr>
-            <tr><td><code>unshare &lt;name&gt; @user… | --all @user</code></td><td>Revoke access</td></tr>
+            <tr><td><code>unshare &lt;name&gt; @user… | --all @user</code></td><td>Revoke access to one item</td></tr>
+            <tr><td><code>revoke @user… [-y]</code></td><td>Take back everything you shared with them</td></tr>
+            <tr><td><code>shared [@user…]</code></td><td>What you shared (with whom) and what's shared with you, incl. invites not accepted yet</td></tr>
+            <tr><td><code>people</code></td><td>Who you share with and who shares with you, and what</td></tr>
             <tr><td><code>move &lt;name&gt; &lt;folder&gt;</code></td><td>Put it in a folder (<code>.</code> = none)</td></tr>
             <tr><td><code>folder [rename old new | remove F]</code></td><td>Your folders</td></tr>
             <tr><td><code>source [add|remove] &lt;login&gt;</code></td><td>Friends whose shares you see</td></tr>

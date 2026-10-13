@@ -94,7 +94,8 @@ if args[:1] == ["api"]:
                 data[alias] = node(full) if can_see(full) else None
             out({"data": data})
     elif path == "user/repository_invitations":
-        out([{"id": i["id"], "repository": {"full_name": i["repo"]}, "inviter": {"login": i["inviter"]}}
+        out([{"id": i["id"], "repository": {"full_name": i["repo"]}, "inviter": {"login": i["inviter"]},
+              "created_at": i.get("created_at")}
              for i in state["invites"] if i["invitee"] == ME])
     elif path.startswith("user/repository_invitations/") and method == "PATCH":
         iid = int(path.rsplit("/", 1)[1])
@@ -115,7 +116,8 @@ if args[:1] == ["api"]:
             perm = "pull" if "permission=pull" in args else "push"
             iid = state["next"]
             state["next"] += 1
-            state["invites"].append({"id": iid, "repo": full, "invitee": user, "inviter": ME, "permission": perm})
+            state["invites"].append({"id": iid, "repo": full, "invitee": user, "inviter": ME, "permission": perm,
+                                    "created_at": "2026-10-12T09:00:00Z"})
             save()
             out({"id": iid})
         elif method == "DELETE":
@@ -133,7 +135,7 @@ if args[:1] == ["api"]:
             state["invites"] = [i for i in state["invites"] if i["id"] != int(iid)]
             save()
         else:
-            out([{"id": i["id"], "invitee": {"login": i["invitee"]}} for i in state["invites"] if i["repo"] == full])
+            out([{"id": i["id"], "invitee": {"login": i["invitee"]}, "created_at": i.get("created_at")} for i in state["invites"] if i["repo"] == full])
     else:
         fail(f"fake gh: unsupported api {path}")
 elif args[:2] == ["repo", "view"]:
