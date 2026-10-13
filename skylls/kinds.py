@@ -291,10 +291,11 @@ def graphql(query: str, **variables: str) -> dict:
     return gh_json(res)["data"]
 
 
-def accept_invites(owners: set) -> Tuple[int, Dict[str, List[dict]]]:
-    """Accept pending invites to skylls repos from these owners; list the others by owner."""
+def accept_invites(owners: set) -> Tuple[int, Dict[str, List[dict]], set]:
+    """Accept pending invites to skylls repos from these owners (or sent by them); list the others by owner.
+    Also returns the new owners (a friend's organization) of repos accepted because a friend sent the invite."""
     invites = gh_json(core.gh_api("user/repository_invitations", "--paginate")) or []
-    accepted, waiting = 0, {}
+    accepted, waiting, new_owners = 0, {}, set()
     for inv in invites:
         repo = (inv.get("repository") or {}).get("full_name", "")
         if not item_of(repo):
@@ -304,11 +305,13 @@ def accept_invites(owners: set) -> Tuple[int, Dict[str, List[dict]]]:
         if owner.lower() in owners or inviter.lower() in owners:
             if core.gh_api("-X", "PATCH", f"user/repository_invitations/{inv['id']}").returncode == 0:
                 accepted += 1
+                if owner.lower() not in owners:
+                    new_owners.add(owner)
         else:
             kind, name = item_of(repo)
             waiting.setdefault(owner, []).append({"kind": kind, "name": name, "repo": repo, "inviter": inviter,
                                                   "invited": (inv.get("created_at") or "")[:10]})
-    return accepted, waiting
+    return accepted, waiting, new_owners
 
 
 def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, quiet: bool = False) -> List[dict]:
@@ -316,7 +319,11 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
     Invites from people who aren't your friends yet are kept in _catalog["waiting"] (quiet: don't mention them)."""
     if "all" not in _catalog:
         owners = {cfg["owner"].lower(), cfg["login"].lower()} | {f.lower() for f in cfg.get("friends", [])}
-        accepted, waiting = accept_invites(owners)
+        accepted, waiting, new_owners = accept_invites(owners)
+        if new_owners:  # a friend shares from their organization: list its items too
+            cfg.setdefault("friends", []).extend(sorted(new_owners))
+            core.save_config(cfg)
+            owners |= {o.lower() for o in new_owners}
         if accepted:
             ok(f"Accepted {accepted} new share{'s' if accepted != 1 else ''} from your friends.")
         _catalog["waiting"] = waiting
@@ -330,6 +337,9 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
                 break
             cursor = page["pageInfo"]["endCursor"]
         wanted = [r for r in repos if item_of(r) and r.split("/")[0].lower() in owners]
+        unknown = sorted({r.split("/")[0] for r in repos if item_of(r)} - {r.split("/")[0] for r in wanted})
+        for who in ([] if quiet else unknown):  # shared earlier (already accepted) by someone not a source
+            info(f"{who} may have shared skylls items with you: skylls source add {who}")
         records_ = []
         for start in range(0, len(wanted), 40):
             chunk = wanted[start:start + 40]
@@ -1468,9 +1478,13 @@ def cmd_source(cfg: dict, action: Optional[str], owner: Optional[str], dry_run: 
             friends.append(owner)
             core.save_config(cfg)
         _catalog.clear()
+        before = {f.lower() for f in friends}
+        items = catalog(cfg)
+        added = {owner.lower()} | {f.lower() for f in cfg["friends"]} - before  # + their organization
         counts = {}
-        for r in catalog(cfg, owner=owner):
-            counts[r["kind"]] = counts.get(r["kind"], 0) + 1
+        for r in items:
+            if r["owner"].lower() in added:
+                counts[r["kind"]] = counts.get(r["kind"], 0) + 1
         ok(f"Added {owner}: " + (", ".join(f"{n} {k}" for k, n in counts.items()) or
                                   "nothing shared with you yet (it appears once they share)"))
     else:

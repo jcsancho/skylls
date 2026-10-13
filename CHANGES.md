@@ -3,6 +3,15 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.6.1 — 2026-10-13
+
+- A friend who shares from their organization (`<org>/swarm-…`) now shows up:
+  when you accept an invite a friend sent from a repo their organization owns,
+  that organization is added to your sources, so its items appear in `list`.
+  Before, the invite was accepted but the item stayed hidden.
+- `list` and the other catalog commands point out skylls repos you can already
+  see from someone who isn't a source yet (`skylls source add <owner>`).
+
 ## 1.6.0 — 2026-10-13
 
 - **Skills inside an agent or swarm** (`.claude/skills/<name>/`, also per

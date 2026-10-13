@@ -95,6 +95,9 @@ echo "--- carol's agents (foo must not appear)"; s agents list | grep -E "•"
 s share tax @bob | grep -E "Invited|add you"
 user bob; s source add carolco | grep Added; sj find tax
 python3 -c "import json;s=json.load(open('$GHROOT/state.json'));print('  bob on carolco/skill-tax:', s['repos']['carolco/skill-tax']['collabs'])"
+echo "--- alice follows carol the person: carol's organization comes along"; user carol; s share tax @alice | grep -E "Invited"
+user alice; s source add carol | grep Added; s list | grep -E "carolco|tax"
+python3 -c "import json;print('  alice friends:', json.load(open('$HOME/.config/skylls/config.json'))['friends'])"
 
 echo "######## remove agent, old config migration"; user bob
 s agents remove btc -y | tail -1
