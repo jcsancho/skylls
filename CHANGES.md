@@ -3,6 +3,21 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.6.0 — 2026-10-13
+
+- **Skills inside an agent or swarm** (`.claude/skills/<name>/`, also per
+  role) that are one of your skylls skills are published as a reference
+  (`.skylls-skills`) instead of a copy; installing the agent or swarm puts the
+  latest version of each in place from skylls (or says to ask the owner to
+  share it). Fewer files to scan and no stale copies.
+- Obsidian's downloaded plugins and themes (`.obsidian/plugins/`,
+  `.obsidian/themes/`) are no longer shared with an agent's or swarm's memory.
+- `skylls sync` no longer prints "Skill '…' not found" for every published
+  skill that isn't installed on this computer; it skips them quietly.
+- `skylls sync` no longer asks "What changed?" for each item: without `-m`
+  the log entry lists the files that changed (e.g. "Updated SKILL.md,
+  scripts/run.py").
+
 ## 1.5.0 — 2026-10-13
 
 - **`skylls sync`** keeps everything in step with GitHub in one go: it

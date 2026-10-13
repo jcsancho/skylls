@@ -109,6 +109,7 @@ skylls pull --update                # install newer versions
 skylls sync -m "Small fixes"        # publish every published item you changed (skills, agents,
                                     # swarms; each one scanned), then install the newer versions
                                     # of skills, agents and swarms friends shared with you
+                                    # (no -m: never asks; the log lists the changed files)
 skylls remove pdf                   # remove your local copy (never touches GitHub)
 ```
 
@@ -169,11 +170,19 @@ skylls swarms push apps_ideas                # ~/swarms/apps_ideas → <org>/swa
 A `.skyllsignore` in the folder adjusts this (one pattern per line,
 `!pattern` to include something).
 
+**Skills inside an agent or swarm** (`.claude/skills/<name>/`, also per role)
+that are one of your skylls skills are published as a reference, not a copy:
+a `.skylls-skills` file lists them, and installing the agent or swarm puts the
+latest version of each in place from skylls. Share those skills too
+(`skylls share <name> @user`); a friend who can't see one is told to ask for
+it. Other skills in there are published as copies.
+
 **Memory (Obsidian) travels with them.**
 - **Where it should live:** inside the agent's or swarm's folder (e.g.
   `~/agents/btc/wiki/`). A subfolder counts as memory if it is an Obsidian
   vault (has `.obsidian/`), or is named `memory`, `wiki`, `obsidian` or
   `*-wiki`. All of it is published, except Obsidian's per-user window layout,
+  its downloaded plugins and themes (`.obsidian/plugins/`, `.obsidian/themes/`),
   the trash and files over 5 MB.
 - **Memory elsewhere in `~/Obsidian`** still works:
   - Found from the instructions: a `<x>-wiki` vault they mention, or

@@ -424,8 +424,8 @@ def installed_scope(cfg: dict, name: str) -> Optional[str]:
     return None
 
 
-def find_installed(cfg: dict, name: str, agent: Optional[str], is_global: Optional[bool]) -> Path:
-    """A skill to publish: a folder path, or an installed copy (project first, then global)."""
+def locate_installed(cfg: dict, name: str, agent: Optional[str], is_global: Optional[bool]) -> Optional[Path]:
+    """A skill to publish: a folder path, or an installed copy (project first, then global); None if neither."""
     if Path(name).expanduser().is_dir():
         return Path(name).expanduser().resolve()
     scopes = [is_global] if is_global is not None else [False, True]
@@ -433,7 +433,12 @@ def find_installed(cfg: dict, name: str, agent: Optional[str], is_global: Option
         for dest_root in target_dirs(cfg, agent or ",".join(AGENT_DIRS), scope):
             if (dest_root / name / "SKILL.md").is_file():
                 return dest_root / name
-    die(f"Skill '{name}' not found in any project or global skills folder.")
+    return None
+
+
+def find_installed(cfg: dict, name: str, agent: Optional[str], is_global: Optional[bool]) -> Path:
+    return (locate_installed(cfg, name, agent, is_global)
+            or die(f"Skill '{name}' not found in any project or global skills folder."))
 
 
 def fetch_remote_skill(spec: str, tmp: Path) -> Path:

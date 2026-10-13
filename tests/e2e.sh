@@ -28,7 +28,9 @@ s push notes -m first --skip-scan | grep Published
 echo "--- agent btc with wiki memory + runtime"
 A=$HOME/agents/btc; mkdir -p $A/wiki/.obsidian $A/logs $A/scripts; echo "# btc agent that tracks bitcoin" > $A/CLAUDE.md
 echo page > $A/wiki/index.md; echo '{}' > $A/wiki/.obsidian/workspace.json; echo log > $A/logs/a.log; echo x > $A/scripts/run.py
-s agents push btc -m first --skip-scan | grep -E "Memory|Published"
+mkdir -p $A/wiki/.obsidian/plugins/style $A/.claude/skills/own; echo js > $A/wiki/.obsidian/plugins/style/main.js
+cp -R $HOME/.claude/skills/pdf $A/.claude/skills/pdf; echo "# own" > $A/.claude/skills/own/SKILL.md  # pdf: a reference
+s agents push btc -m first --skip-scan | grep -E "Memory|Published|reference"
 echo "  repo content:"; git --git-dir $GHROOT/alice/skylls-agent-btc.git ls-tree -r --name-only HEAD | paste -sd' ' -
 W=$HOME/swarms/apps; mkdir -p $W/.swarm $W/scout; echo "# apps swarm finds app ideas" > $W/CLAUDE.md; echo '{}' > $W/.swarm/agents.json
 echo "# scout" > $W/scout/CLAUDE.md; echo work > $W/scout/work.py; echo '{}' > $W/.swarm/bus.jsonl
@@ -53,7 +55,7 @@ user alice; echo "--- alice: shared @bob after he accepted"; s shared @bob | gre
 s list; s agents list
 echo "--- notes is not visible"; s add notes --from alice | tail -1
 echo "--- install"; s add pdf --from alice -g -a all | grep -E "Installed|Linked"
-s agents add btc --from alice | grep -E "Installed"; (cd $HOME/agents/btc && find . -type f | sort | paste -sd' ' -)
+s agents add btc --from alice | grep -E "Installed|Skill pdf"; (cd $HOME/agents/btc && find . -type f | sort | paste -sd' ' -)
 sj installed
 
 echo "######## ALICE 1.2.0, BOB updates"; user alice
@@ -66,6 +68,9 @@ echo "Syncs." >> $HOME/.claude/skills/pdf/SKILL.md; echo "more" >> $HOME/agents/
 s sync -m "Synced" --skip-scan | grep -E "Published|up to date|Sync done"
 user bob; s sync | grep -E "→|Updated from|Published:"; sj installed | grep pdf
 grep -m1 "^## " $HOME/agents/btc/CHANGELOG.md; s sync | grep "Updated from"
+echo "--- sync without -m never asks: the log lists the changed files"; user alice
+echo "Quiet." >> $HOME/.claude/skills/pdf/SKILL.md
+s sync --skip-scan | grep -c "not found" || true; grep -m1 -A2 "^## " $HOME/.claude/skills/pdf/CHANGELOG.md | tail -1
 echo "--- revoke: alice takes back everything from bob, then shares again"; user alice
 s revoke @bob --dry-run | grep -E "•|Would"; s revoke @bob -y | grep -E "Revoked"; s revoke @bob | tail -1
 s share pdf @bob >/dev/null; s agents share btc @bob | grep Invited; user bob; s list >/dev/null

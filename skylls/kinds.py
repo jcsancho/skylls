@@ -58,11 +58,17 @@ RUNTIME_FILES = ["*.log", "*.jsonl", "*_state.json", "*.bak", "*.bak-*", "*.db",
                  "*.pyc", ".DS_Store", "settings.local.json", ".env", ".env.*", "*.env", "*.pem", "*.key"]
 # A swarm is shared as its configuration only: instructions and settings, top level and per role.
 SWARM_KEEP = ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "README.md", "CHANGELOG.md", ".skyllsignore", ".skyllsmemory",
+              ".skylls-skills",
               ".claude/*", ".swarm/agents.json", ".swarm/schedules.json", "*/CLAUDE.md", "*/AGENTS.md",
               "*/GEMINI.md", "*/.claude/*"]
 MEMORY_NAMES = {"memory", "wiki", "obsidian"}  # in-folder memory, besides any Obsidian vault or *-wiki
 MEMORY_DIR = ".skylls-memory"  # snapshot of memory kept outside the item, by path under the owner's home
-MEMORY_SKIP = [".obsidian/workspace*", ".trash/*", ".DS_Store", "*.tmp"]
+# Obsidian's per-user state and downloaded plugins/themes (third-party code) are not shared.
+MEMORY_SKIP = [".obsidian/workspace*", ".obsidian/plugins/*", ".obsidian/themes/*", ".trash/*", ".DS_Store", "*.tmp"]
+# Skills copied into an agent/swarm that are your skylls skills are shared as a reference, not a copy:
+# one '<folder> <owner>/<repo>' line per skill in this file; installs fetch them from skylls.
+SKILLS_MANIFEST = ".skylls-skills"
+BUNDLED_RE = re.compile(r"((?:[^/]+/)?\.(?:claude|agents|gemini)/skills/([^/]+))/")
 OBSIDIAN_RE = re.compile(r"(?:~|\$HOME|\$\{HOME\}|\bHOME|/Users/[^/\s\"'`]+|/home/[^/\s\"'`]+)"
                          r"/(Obsidian/[^\s\"'`)\]>,;*]+)")
 
@@ -520,6 +526,42 @@ def local_files(kind: str, item: Path) -> List[str]:
     return sorted(out)
 
 
+def bundled_skills(cfg: dict, files: List[str]) -> Dict[str, str]:
+    """Skill folders copied into an agent/swarm that are your published skills: {folder: repo}."""
+    mine = {r["name"].lower(): r["repo"] for r in catalog(cfg, "skills") if r["mine"]}
+    found = {}
+    for rel in files:
+        m = BUNDLED_RE.match(rel)
+        if m and m.group(2).lower() in mine:
+            found[m.group(1)] = mine[m.group(2).lower()]
+    return found
+
+
+def read_manifest(item: Path) -> Dict[str, str]:
+    path = item / SKILLS_MANIFEST
+    lines = path.read_text(errors="ignore").splitlines() if path.is_file() else []
+    pairs = [line.split() for line in lines]
+    return {p[0]: p[1] for p in pairs if len(p) == 2 and BUNDLED_RE.match(p[0] + "/") and ".." not in p[0]}
+
+
+def install_bundled(cfg: dict, item: Path, folder: str, repo: str) -> None:
+    """Put the latest version of a referenced skill into the agent/swarm (a copy)."""
+    name = folder.rsplit("/", 1)[-1]
+    r = next((x for x in catalog(cfg, "skills") if x["repo"].lower() == repo.lower()), None)
+    if not r:
+        warn(f"Skill {name} ({folder}/) is {repo}, which isn't shared with you. "
+             f"Ask its owner: skylls share {name} @{cfg['login']}, then install this again.")
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        src, _, log = extract("skills", r, None, Path(tmp))
+        got = log["entries"][0]["version"] if log["entries"] else "latest"
+        log["source"] = f"{r['repo']} v{got}"
+        core.write_changelog(src, r["name"], log)
+        core.remove_path(item / folder)
+        shutil.copytree(src, item / folder)
+    ok(f"Skill {name} v{got} → {folder}/")
+
+
 def is_item(kind: str, path: Path) -> bool:
     if not path.is_dir() or path.name.startswith("."):
         return False
@@ -653,7 +695,7 @@ def local_item(cfg: dict, kind: str, name: str) -> Path:
 
 
 def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, about: Optional[str],
-            folder: Optional[str], skip_scan: bool, dry_run: bool) -> None:
+            folder: Optional[str], skip_scan: bool, dry_run: bool, ask: bool = True) -> None:
     """Publish a new version of one of your items to its own private repo (created if needed)."""
     src = src.resolve()
     name = check_name(src.name)
@@ -670,14 +712,25 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
         inner = local_memory_dirs(src)
         if inner:
             info(f"Memory in the folder: {', '.join(d + '/' for d in inner)}")
-    files = [f for f in local_files(kind, src) if f != core.CHANGELOG]
+    files = [f for f in local_files(kind, src) if f not in (core.CHANGELOG, SKILLS_MANIFEST)]
+    bundled = bundled_skills(cfg, files) if kind != "skills" else {}
+    if bundled:
+        files = [f for f in files if not any(f.startswith(d + "/") for d in bundled)] + [SKILLS_MANIFEST]
+        info(f"Skills from skylls, shared as a reference (friends get them from skylls): "
+             f"{', '.join(sorted({d.rsplit('/', 1)[-1] for d in bundled}))}")
+
+    def place(rel: str, root: Path) -> None:
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        if rel == SKILLS_MANIFEST:
+            (root / rel).write_text("".join(f"{d} {repo}\n" for d, repo in sorted(bundled.items())))
+        else:
+            shutil.copy2(src / rel, root / rel)
     if skip_scan:
         warn("Skipping the secret scan (--skip-scan).")
     else:
         with tempfile.TemporaryDirectory() as tmp:
             for rel in files:
-                (Path(tmp) / name / rel).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src / rel, Path(tmp) / name / rel)
+                place(rel, Path(tmp) / name)
             core.scan_secrets(Path(tmp) / name)
     exists = core.gh("repo", "view", repo).returncode == 0
     if dry_run:
@@ -698,10 +751,10 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
         if rel not in files and rel != core.CHANGELOG:
             existing.unlink()
     for rel in files:
-        (path / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src / rel, path / rel)
+        place(rel, path)
     git("add", "-A", cwd=path)
-    changed = bool(git("status", "--porcelain", cwd=path).stdout.strip())
+    status = git("status", "--porcelain", cwd=path).stdout.splitlines()
+    changed = bool(status)
     last = old_log["entries"][0]["version"] if old_log["entries"] else None
     if not changed and not about:
         ok(f"{name} v{last} is already up to date.")
@@ -710,8 +763,11 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
     version = core.bump(last, part)
     while version in versions(path):
         version = core.bump(version, "patch")
-    if not message and sys.stdin.isatty():
+    if not message and ask and sys.stdin.isatty():
         message = input(f"  {YELLOW}?{NC} What changed in v{version}? ").strip()
+    if not message and not ask and last:
+        files = [line[3:].split(" -> ")[-1] for line in status if line[3:] != "CHANGELOG.md"]
+        message = "Updated " + ", ".join(files[:5]) + (f" and {len(files) - 5} more" if len(files) > 5 else "")
     notes = message or ("First version" if not last else "Updated")
     main = main_file(kind, path)
     log = old_log
@@ -969,6 +1025,7 @@ def cmd_add_item(cfg: dict, kind: str, spec: str, owner: Optional[str], as_name:
                     input(f"  {YELLOW}?{NC} {dest} exists and isn't a copy of {r['repo']}. Replace its files? "
                           "(y/N): ").strip().lower() != "y":
                 die("Nothing was changed.")
+        bundled = read_manifest(src)
         inner = memory_dirs_in(rels)
         keep_mine = [d for d in inner if (dest / d).is_dir()] if not update_memory else []
         rels = [f for f in rels if f.split("/", 1)[0] not in keep_mine]
@@ -978,13 +1035,16 @@ def cmd_add_item(cfg: dict, kind: str, spec: str, owner: Optional[str], as_name:
             mine_memory = local_memory_dirs(dest)
             for rel in local_files(kind, dest):  # drop definition files the new version no longer has
                 if rel not in rels and rel != core.CHANGELOG and not rel.startswith(MEMORY_DIR + "/") \
-                        and rel.split("/", 1)[0] not in mine_memory:
+                        and rel.split("/", 1)[0] not in mine_memory \
+                        and not any(rel.startswith(d + "/") for d in bundled):
                     (dest / rel).unlink()
         for rel in rels:
             (dest / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src / rel, dest / rel)
         restored = install_memory(src, outside, update_memory)
         rewrite_paths(dest, rels, log["origin"], log["home"])
+        for folder, repo in sorted(bundled.items()):
+            install_bundled(cfg, dest, folder, repo)
         log["source"] = f"{r['repo']} v{got}"
         log["origin"] = log["home"] = ""
         log["memory"] = ", ".join(sorted({snapshot_root(f) for f in outside}))
@@ -1109,14 +1169,8 @@ def cmd_pull(cfg: dict, update: bool, agent: Optional[str], is_global: Optional[
 
 def local_original(cfg: dict, kind: str, name: str) -> Optional[Path]:
     """Your own local copy of one of your published items (not a download), if it is on this computer."""
-    if kind == "skills":
-        try:
-            src = core.find_installed(cfg, name, None, None)
-        except SystemExit:
-            return None
-    else:
-        src = local_item(cfg, kind, name)
-    return src if is_item(kind, src) and not src.is_symlink() and not core.read_changelog(src)["source"] else None
+    src = core.locate_installed(cfg, name, None, None) if kind == "skills" else local_item(cfg, kind, name)
+    return src if src and is_item(kind, src) and not src.is_symlink() and not core.read_changelog(src)["source"] else None
 
 
 def installed_version(path: Path) -> Optional[str]:
@@ -1135,7 +1189,7 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool) 
             continue
         before = installed_version(src)
         try:
-            publish(cfg, r["kind"], src, message, "patch", None, None, skip_scan, dry_run)
+            publish(cfg, r["kind"], src, message, "patch", None, None, skip_scan, dry_run, ask=False)
         except SystemExit:  # e.g. the secret scan found something: the others still go
             failed.append(f"{one(r['kind'])} {r['name']}")
             continue
