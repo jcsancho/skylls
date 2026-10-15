@@ -24,6 +24,7 @@ snapshotted into .skylls-memory/).
 """
 
 import fnmatch
+import hashlib
 import io
 import json
 import os
@@ -273,6 +274,7 @@ LIST_QUERY = """query($endCursor: String) { viewer { repositories(first: 100, af
   ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]) {
   nodes { name owner { login } } pageInfo { hasNextPage endCursor } } } }"""
 ITEM_FIELDS = """name owner { login } isPrivate pushedAt url
+  defaultBranchRef { target { oid } }
   repositoryTopics(first: 20) { nodes { topic { name } } }
   changelog: object(expression: "HEAD:CHANGELOG.md") { ... on Blob { text } }
   skillmd: object(expression: "HEAD:SKILL.md") { ... on Blob { text } }
@@ -368,7 +370,9 @@ def to_record(cfg: dict, node: dict) -> Optional[dict]:
             "summary": log["about"] or summary_from(text),
             "updated": log["entries"][0]["date"] if log["entries"] else None,
             "created": log["created"], "by": log["created_by"], "log": log, "text": text,
-            "suggestions": (node.get("issues") or {}).get("nodes", [])}
+            "suggestions": (node.get("issues") or {}).get("nodes", []),
+            "private": node.get("isPrivate", True),
+            "head": ((node.get("defaultBranchRef") or {}).get("target") or {}).get("oid", "")}
 
 
 def summary_from(text: str) -> str:
@@ -722,6 +726,36 @@ def to_trash(path: Path) -> str:
 def local_item(cfg: dict, kind: str, name: str) -> Path:
     """Where your copy of an agent/swarm lives."""
     return Path(cfg["dirs"][kind]).expanduser() / name
+
+
+def blob_id(data: bytes) -> str:
+    """The id git gives a file with this content."""
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+
+def unchanged(cfg: dict, rec: dict, src: Path, dry_run: bool) -> bool:
+    """True when the local item matches its latest published version (checked offline against the clone
+    in the cache, which must be at the commit GitHub has): sync then skips the scan, fetch and gh calls."""
+    path = REPOS_CACHE / rec["repo"]
+    if not rec.get("head") or not rec.get("private") or not (path / ".git").exists():
+        return False
+    res = git("ls-tree", "-r", "-z", rec["head"], cwd=path, check=False)
+    if res.returncode != 0:  # the clone doesn't have that commit yet
+        return False
+    kind = rec["kind"]
+    if kind != "skills" and not dry_run and (roots := memory_roots(kind, src)):
+        snapshot_memory(src, roots)
+    files = [f for f in local_files(kind, src) if f not in (core.CHANGELOG, SKILLS_MANIFEST)]
+    bundled = bundled_skills(cfg, files) if kind != "skills" else {}
+    want = {f: blob_id((src / f).read_bytes()) for f in files if not any(f.startswith(d + "/") for d in bundled)}
+    if bundled:
+        want[SKILLS_MANIFEST] = blob_id("".join(f"{d} {r}\n" for d, r in sorted(bundled.items())).encode())
+    have = {}
+    for line in filter(None, res.stdout.split("\0")):
+        meta, _, rel = line.partition("\t")
+        if rel != core.CHANGELOG:
+            have[rel] = meta.split()[2]
+    return want == have
 
 
 def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, about: Optional[str],
@@ -1236,12 +1270,15 @@ def installed_version(path: Path) -> Optional[str]:
 
 def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, yes: bool = False) -> None:
     """Publish what changed in your published items, then install newer versions of what friends shared."""
-    published, updated, failed = [], [], []
+    published, updated, failed, unchanged_ = [], [], [], 0
     mine_ = [r for r in catalog(cfg) if r["mine"]]
     section(f"Publishing your changes ({len(mine_)} published items)")
     for r in mine_:
         src = local_original(cfg, r["kind"], r["name"])
         if not src:
+            continue
+        if unchanged(cfg, r, src, dry_run):
+            unchanged_ += 1
             continue
         before = installed_version(src)
         try:
@@ -1251,6 +1288,8 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
             continue
         if installed_version(src) != before:
             published.append(f"{one(r['kind'])} {r['name']} v{installed_version(src)}")
+    if unchanged_:
+        ok(f"Unchanged since the last version: {unchanged_} item{'s' if unchanged_ != 1 else ''}.")
     section("Getting newer versions of what friends shared with you")
     updated += cmd_pull(cfg, True, None, None, dry_run)  # skills
     by_repo = {r["repo"].lower(): r for r in catalog(cfg) if not r["mine"]}

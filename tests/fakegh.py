@@ -44,10 +44,16 @@ def show(full, path):
     return {"text": res.stdout} if res.returncode == 0 else None
 
 
+def head(full):
+    res = subprocess.run(["git", "--git-dir", str(ROOT / f"{full}.git"), "rev-parse", "--verify", "--quiet", "HEAD"],
+                         capture_output=True, text=True)
+    return {"target": {"oid": res.stdout.strip()}} if res.returncode == 0 else None
+
+
 def node(full):
     r = state["repos"][full]
     owner, name = full.split("/")
-    return {"name": name, "owner": {"login": owner}, "isPrivate": r["private"], "pushedAt": "", "url": f"https://github.com/{full}",
+    return {"name": name, "owner": {"login": owner}, "isPrivate": r["private"], "pushedAt": "", "defaultBranchRef": head(full), "url": f"https://github.com/{full}",
             "repositoryTopics": {"nodes": [{"topic": {"name": t}} for t in r["topics"]]},
             "changelog": show(full, "CHANGELOG.md"), "skillmd": show(full, "SKILL.md"),
             "claudemd": show(full, "CLAUDE.md"), "agentsmd": show(full, "AGENTS.md"),

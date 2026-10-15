@@ -3,6 +3,13 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.7.1 — 2026-10-15
+
+- **Faster `sync` when little changed:** an item whose files match its
+  latest published version (checked offline against the cached clone, at the
+  commit GitHub reports) is skipped without the secret scan, `git fetch` or
+  `gh` calls. With many items a no-change sync goes from minutes to seconds.
+
 ## 1.7.0 — 2026-10-15
 
 - **Private memory notes:** a note in an agent's or swarm's memory whose

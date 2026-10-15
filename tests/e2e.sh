@@ -74,6 +74,8 @@ grep -m1 "^## " $HOME/agents/btc/CHANGELOG.md; s sync | grep "Updated from"
 echo "--- sync without -m never asks: the log lists the changed files"; user alice
 echo "Quiet." >> $HOME/.claude/skills/pdf/SKILL.md
 s sync --skip-scan | grep -c "not found" || true; grep -m1 -A2 "^## " $HOME/.claude/skills/pdf/CHANGELOG.md | tail -1
+echo "--- sync with nothing changed skips every item (no scan, no fetch)"
+s sync | grep -E "Unchanged|Scanning|Published:"
 echo "--- revoke: alice takes back everything from bob, then shares again"; user alice
 s revoke @bob --dry-run | grep -E "•|Would"; s revoke @bob -y | grep -E "Revoked"; s revoke @bob | tail -1
 s share pdf @bob >/dev/null; s agents share btc @bob | grep Invited; user bob; s list >/dev/null
