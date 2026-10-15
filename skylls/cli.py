@@ -666,7 +666,12 @@ Every item you publish gets its own private GitHub repo; you share item by item.
 {CYAN}SUGGESTIONS:{NC}
   {GREEN}suggest{NC} <name> --from O "text"     Suggest an improvement (GitHub issue to the owner)
   {GREEN}suggestions{NC} [name]                 Open suggestions for yours
-  {GREEN}accept{NC} / {GREEN}decline{NC} <name>#<n> [-m note]  Answer one
+  {GREEN}review{NC} <name>#<n>                   Read one; a pull request shows its changes
+  {GREEN}accept{NC} / {GREEN}decline{NC} <name>#<n> [-m note]  Answer one (accepting a pull request merges + publishes it)
+
+{CYAN}PULL REQUESTS (agents/swarms):{NC}
+  {GREEN}agents|swarms propose{NC} <name> --from O -m "what"  Send your changes to a friend's copy as a pull request
+  {GREEN}agents|swarms allow-prs{NC} <name> | --all   Let the people you share with send pull requests (--off)
 
 {CYAN}SETUP & MORE:{NC}
   {GREEN}setup{NC}                              Your account or organization, agent CLIs, folders

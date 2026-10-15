@@ -265,6 +265,34 @@ skylls accept pdf#3 -m "Done in 1.3.0"                       # closes it as done
 skylls decline pdf#4 -m "Out of scope"                       # closes it as not planned
 ```
 
+### Pull requests (agents and swarms)
+
+Changed your copy of a friend's agent or swarm and want them to have it? Send it as a real
+GitHub pull request. They review it and, when they accept, skylls merges it into **their**
+copy and publishes a new version, which you then install like any update.
+
+```bash
+# the owner, once per item (or --all): let the people they share with send pull requests
+skylls swarms allow-prs opportunity-hunter
+
+# you: compare your copy with the version you installed and send the difference
+skylls swarms propose opportunity-hunter --from alyssa -m "Add the new data tools"
+#   → lists the changed files (leave some out with --skip scout/CLAUDE.md), scans for secrets,
+#     puts the owner's paths back (an install points them at yours), forks the repo into your
+#     account/organization (private) and opens the pull request
+
+# the owner: review and answer
+skylls swarms suggestions                         # opportunity-hunter#3  Add the new data tools  (pull request)
+skylls swarms review opportunity-hunter#3         # the diff, and a warning if you changed the same files
+skylls swarms accept opportunity-hunter#3         # applies it to your folder, publishes a new version, closes it
+skylls swarms decline opportunity-hunter#3 -m "I keep my helpers"
+```
+
+`accept` stops if you changed a file the pull request also changes since the version it
+started from (`--force` takes theirs). Memory and skills shared by reference are never part
+of a pull request. Merging on github.com instead would be overwritten by your next `push`:
+accept with skylls.
+
 ## For agents: few tokens
 
 Setup installs **the skylls skill**
@@ -359,7 +387,9 @@ Add `--dry-run` to any command to see what it would do without changing anything
 | `folder [rename old new \| remove F]` | Your folders |
 | `source [add\|remove] <login>` | Friends whose shares you see |
 | `suggest <name> [--from O] "text"` | Suggest an improvement to the owner |
-| `suggestions [name]` / `accept <name>#<n>` / `decline <name>#<n>` | Your open suggestions, and answering them |
+| `suggestions [name]` / `review <name>#<n>` / `accept <name>#<n>` / `decline <name>#<n>` | Your open suggestions and pull requests, and answering them |
+| `agents\|swarms propose <name> [--from O] -m "…"` | Send your changes to a friend's agent/swarm as a pull request |
+| `agents\|swarms allow-prs <name> \| --all [--off]` | Let the people you share with send pull requests |
 | `agents …` / `swarms …` | The same commands for agents and swarms, plus `add --as N --update-memory`, `push -y` (memory notes without asking) and `remove [--memory] [-y]` |
 | `agent-skill [-g] [-a A]` | (Re)install the skylls skill for your agents |
 | `search <query>` | Public skills on skills.sh |

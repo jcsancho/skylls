@@ -59,7 +59,10 @@ def node(full):
             "claudemd": show(full, "CLAUDE.md"), "agentsmd": show(full, "AGENTS.md"),
             "issues": {"nodes": [{"number": i["number"], "title": i["title"], "url": f"https://github.com/{full}/issues/{i['number']}",
                                   "createdAt": "2026-10-08T10:00:00Z", "author": {"login": i["author"]}}
-                                 for i in r["issues"] if i["state"] == "OPEN" and "suggestion" in i["labels"]]}}
+                                 for i in r["issues"] if i["state"] == "OPEN" and "suggestion" in i["labels"]]},
+            "pullRequests": {"nodes": [{"number": i["number"], "title": i["title"], "url": f"https://github.com/{full}/pull/{i['number']}",
+                                        "createdAt": "2026-10-08T10:00:00Z", "author": {"login": i["author"]}}
+                                       for i in r["issues"] if i["state"] == "OPEN" and i.get("pr")]}}
 
 
 def fail(msg, code=1):
@@ -80,7 +83,11 @@ if args[:1] == ["api"]:
         if method == "PATCH":
             if ME not in org["admins"]:
                 fail("Must be an organization owner (HTTP 403)")
-            org["base"] = next(a.split("=", 1)[1] for a in args if a.startswith("default_repository_permission="))
+            for a in args:
+                if a.startswith("default_repository_permission="):
+                    org["base"] = a.split("=", 1)[1]
+                if a.startswith("members_can_fork_private_repositories="):
+                    org["private_forks"] = a.endswith("=true")
             save()
         out({"login": m[1], "default_repository_permission": org.get("base", "read")})
     elif path == "user/memberships/orgs":
@@ -111,6 +118,39 @@ if args[:1] == ["api"]:
         state["repos"][inv["repo"]]["collabs"][ME] = inv["permission"]
         state["invites"].remove(inv)
         save()
+    elif m := re.fullmatch(r"repos/([^/]+/[^/]+)", path):
+        full = m[1]
+        if not can_see(full):
+            fail("Not Found (HTTP 404)")
+        r = state["repos"][full]
+        if method == "PATCH":
+            if not can_admin(full.split("/")[0]):
+                fail("Must have admin rights (HTTP 403)")
+            r["allow_forking"] = "allow_forking=true" in args
+            save()
+        out({"full_name": full, "fork": bool(r.get("fork_of")), "allow_forking": r.get("allow_forking", False),
+             **({"parent": {"full_name": r["fork_of"]}} if r.get("fork_of") else {})})
+    elif m := re.fullmatch(r"repos/([^/]+/[^/]+)/forks", path):
+        full = m[1]
+        r = state["repos"].get(full)
+        if not r or not can_see(full):
+            fail("Not Found (HTTP 404)")
+        org = state["orgs"].get(full.split("/")[0])
+        if not r.get("allow_forking") or (org is not None and not org.get("private_forks")):
+            fail("Forking is disabled for this repository (HTTP 403)")
+        owner = next((a.split("=", 1)[1] for a in args if a.startswith("organization=")), ME)
+        name = next((a.split("=", 1)[1] for a in args if a.startswith("name=")), full.split("/")[1])
+        fork = f"{owner}/{name}"
+        (ROOT / owner).mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "clone", "-q", "--bare", str(ROOT / f"{full}.git"), str(ROOT / f"{fork}.git")], check=True)
+        state["repos"][fork] = {"private": True, "description": "", "topics": [], "collabs": {}, "issues": [], "fork_of": full}
+        save()
+        out({"full_name": fork})
+    elif m := re.fullmatch(r"repos/([^/]+/[^/]+)/issues/(\d+)", path):
+        full, n = m[1], int(m[2])
+        issue = next((i for i in state["repos"][full]["issues"] if i["number"] == n), None) or fail("Not Found (HTTP 404)")
+        out({"number": n, "title": issue["title"], "state": issue["state"].lower(), "user": {"login": issue["author"]},
+             **({"pull_request": {"url": ""}} if issue.get("pr") else {})})
     elif m := re.fullmatch(r"repos/([^/]+/[^/]+)/collaborators/([^/]+)", path):
         full, user = m.groups()
         r = state["repos"].get(full) or fail("Not Found (HTTP 404)")
@@ -186,6 +226,33 @@ elif args[:2] == ["issue", "create"]:
     r["issues"].append({"number": n, "title": opt("--title"), "labels": [opt("--label")], "state": "OPEN", "author": ME})
     save()
     print(f"https://github.com/{full}/issues/{n}")
+elif args[:2] == ["pr", "create"]:
+    full = opt("-R")
+    if not can_see(full):
+        fail("no access")
+    r = state["repos"][full]
+    head_owner, branch = opt("--head").split(":", 1)
+    fork = next((f for f, v in state["repos"].items() if v.get("fork_of") == full and f.startswith(head_owner + "/")), None)
+    if not fork:
+        fail("head repository is not a fork of the base")
+    n = len(r["issues"]) + 1
+    subprocess.run(["git", "--git-dir", str(ROOT / f"{full}.git"), "fetch", "-q", str(ROOT / f"{fork}.git"),
+                    f"refs/heads/{branch}:refs/pull/{n}/head"], check=True)
+    r["issues"].append({"number": n, "title": opt("--title"), "labels": [], "state": "OPEN", "author": ME, "pr": True})
+    save()
+    print(f"https://github.com/{full}/pull/{n}")
+elif args[:2] == ["pr", "diff"]:
+    full, n = opt("-R"), int(args[2])
+    git_dir = str(ROOT / f"{full}.git")
+    base = subprocess.run(["git", "--git-dir", git_dir, "merge-base", "main", f"refs/pull/{n}/head"],
+                          capture_output=True, text=True).stdout.strip()
+    print(subprocess.run(["git", "--git-dir", git_dir, "diff", base, f"refs/pull/{n}/head"], capture_output=True, text=True).stdout)
+elif args[:2] == ["pr", "close"]:
+    r = state["repos"][opt("-R")]
+    issue = next((i for i in r["issues"] if i["number"] == int(args[2]) and i.get("pr")), None) or fail("no such pull request")
+    issue["state"] = "CLOSED"
+    issue["comment"] = opt("--comment")
+    save()
 elif args[:2] == ["issue", "close"]:
     r = state["repos"][opt("-R")]
     issue = next((i for i in r["issues"] if i["number"] == int(args[2])), None) or fail("no such issue")

@@ -34,6 +34,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
@@ -285,7 +286,8 @@ ITEM_FIELDS = """name owner { login } isPrivate pushedAt url
   claudemd: object(expression: "HEAD:CLAUDE.md") { ... on Blob { text } }
   agentsmd: object(expression: "HEAD:AGENTS.md") { ... on Blob { text } }
   issues(states: OPEN, labels: ["suggestion"], first: 50) {
-    nodes { number title url createdAt author { login } } }"""
+    nodes { number title url createdAt author { login } } }
+  pullRequests(states: OPEN, first: 50) { nodes { number title url createdAt author { login } } }"""
 _catalog: Dict[str, List[dict]] = {}
 
 
@@ -378,7 +380,8 @@ def to_record(cfg: dict, node: dict) -> Optional[dict]:
             "summary": log["about"] or summary_from(text),
             "updated": log["entries"][0]["date"] if log["entries"] else None,
             "created": log["created"], "by": log["created_by"], "log": log, "text": text,
-            "suggestions": (node.get("issues") or {}).get("nodes", []),
+            "suggestions": (node.get("issues") or {}).get("nodes", [])
+            + [{**pr, "pr": True} for pr in (node.get("pullRequests") or {}).get("nodes", [])],
             "private": node.get("isPrivate", True),
             "head": ((node.get("defaultBranchRef") or {}).get("target") or {}).get("oid", "")}
 
@@ -1688,6 +1691,7 @@ def cmd_suggestions(cfg: dict, kind: str, name: Optional[str]) -> None:
         if r["mine"] and (not name or r["name"].lower() == name.lower()):
             for s in r["suggestions"]:
                 rows.append({"id": f"{r['name']}#{s['number']}", "title": s["title"],
+                             "type": "pull request" if s.get("pr") else "idea",
                              "by": (s.get("author") or {}).get("login", ""), "date": s["createdAt"][:10],
                              "url": s["url"]})
     if core.JSON_MODE:
@@ -1696,19 +1700,30 @@ def cmd_suggestions(cfg: dict, kind: str, name: Optional[str]) -> None:
         return
     section(f"Open suggestions for your {kind}")
     for row in rows:
-        say(f"  {YELLOW}{row['id']}{NC}  {row['title']}")
+        say(f"  {YELLOW}{row['id']}{NC}  {row['title']}" + (f"  {CYAN}(pull request){NC}" if row["type"] != "idea" else ""))
         say(f"      by @{row['by']} on {row['date']}  {BLUE}{row['url']}{NC}")
     if rows:
-        info(f"Answer with: skylls{cmd_prefix(kind)} accept <name>#<n>  or  decline <name>#<n> [-m note]")
+        info(f"See one: skylls{cmd_prefix(kind)} review <name>#<n> · answer: accept <name>#<n> or decline <name>#<n> "
+             "[-m note] (accepting a pull request merges it and publishes a new version)")
     else:
         info("None.")
 
 
-def cmd_decide(cfg: dict, kind: str, ref: str, accept: bool, note: Optional[str], dry_run: bool) -> None:
-    name, _, number = ref.partition("#")
-    if not number.isdigit():
-        die(f"Use <name>#<number>, e.g. skylls{cmd_prefix(kind)} accept {name or 'pdf'}#3")
+def cmd_decide(cfg: dict, kind: str, ref: str, accept: bool, note: Optional[str], dry_run: bool,
+               force: bool = False) -> None:
+    name, number = split_ref(kind, ref)
     r = resolve(cfg, kind, name, cfg["owner"])
+    pr = pr_of(r["repo"], number)
+    if pr:
+        if accept:
+            accept_pr(cfg, kind, r, number, pr, note, force, dry_run)
+        elif dry_run:
+            info(f"Would close pull request {r['repo']}#{number} without merging")
+        else:
+            gh_ok("pr", "close", number, "-R", r["repo"], "--comment", note or "Thanks, but not planned.",
+                  what=f"Could not close {r['repo']}#{number}")
+            ok(f"Declined {r['name']}#{number}")
+        return
     note = note or ("Done, thanks!" if accept else "Thanks, but not planned.")
     if dry_run:
         info(f"Would close {r['repo']}#{number} as {'done' if accept else 'not planned'}: {note}")
@@ -1716,6 +1731,260 @@ def cmd_decide(cfg: dict, kind: str, ref: str, accept: bool, note: Optional[str]
     gh_ok("issue", "close", number, "-R", r["repo"], "--reason", "completed" if accept else "not planned",
           "--comment", note, what=f"Could not close {r['repo']}#{number}")
     ok(f"{'Accepted' if accept else 'Declined'} {r['name']}#{number}")
+
+
+# ── Proposals: your changes to a friend's agent/swarm as a pull request ──────
+def fork_name(repo: str) -> str:
+    """Your fork of a friend's item repo: named after them, so it never clashes with your own item."""
+    owner, name = repo.split("/")
+    return f"{name}-from-{owner}"[:100]
+
+
+def cmd_allow_prs(cfg: dict, kind: str, name: Optional[str], all_: bool, off: bool, dry_run: bool) -> None:
+    """Let the people you share with fork your items, so they can send changes as pull requests."""
+    repos = my_repos(cfg, kind, name, all_)
+    org = cfg["owner"] if cfg.get("owner_is_org") else None
+    state = "false" if off else "true"
+    if dry_run:
+        info(f"Would {'turn off' if off else 'allow'} forks (pull requests from friends) for {', '.join(repos)}"
+             + (f" and allow private forks in {org}" if org and not off else ""))
+        return
+    if org and not off:
+        res = core.gh_api("-X", "PATCH", f"orgs/{org}", "-F", "members_can_fork_private_repositories=true")
+        if res.returncode != 0:
+            warn(f"Could not allow private forks in {org} (you must own it): {res.stderr.strip()}")
+    for repo in repos:
+        gh_ok("api", "-X", "PATCH", f"repos/{repo}", "-F", f"allow_forking={state}",
+              what=f"Could not change forking for {repo}")
+        ok(f"{repo}: pull requests from the people you share it with are {'off' if off else 'on'}")
+    if not off:
+        info(f"They send changes with: skylls{cmd_prefix(kind)} propose <name> --from {cfg['owner']} -m \"what\"")
+
+
+def copy_of(cfg: dict, kind: str, r: dict) -> Tuple[Path, str]:
+    """Your downloaded copy of a friend's agent/swarm, and the version it came from."""
+    item = local_item(cfg, kind, r["name"])
+    source = core.read_changelog(item)["source"] if item.is_dir() else ""
+    if not source.startswith(r["repo"] + " v"):
+        die(f"{item} isn't a copy of {r['repo']}. Install it first: "
+            f"skylls{cmd_prefix(kind)} add {r['name']} --from {r['owner']}, then change it and propose.")
+    return item, source.rsplit(" v", 1)[1]
+
+
+def definition_files(kind: str, item: Path) -> List[str]:
+    """The files a proposal can change: shareable, not memory, not skills shared by reference."""
+    skip_dirs = set(local_memory_dirs(item)) | {MEMORY_DIR}
+    bundled = read_manifest(item)
+    return [f for f in local_files(kind, item)
+            if f not in (core.CHANGELOG, SKILLS_MANIFEST) and f.split("/", 1)[0] not in skip_dirs
+            and not any(f.startswith(d + "/") for d in bundled)]
+
+
+def stage_proposal(kind: str, item: Path, work: Path, skip: List[str]) -> List[str]:
+    """Put your copy's files into a checkout of the version you installed, with the owner's paths put back
+    (an install points their paths at yours). Returns `git status` lines of what changed."""
+    log = core.read_changelog(work)  # the owner's paths, as published in that version
+    origin, home, mine_home = log["origin"], log["home"], str(Path.home())
+    skipped = lambda rel: any(fnmatch.fnmatch(rel, pat) for pat in skip)  # noqa: E731
+    mine = [f for f in definition_files(kind, item) if not skipped(f)]
+    for rel in definition_files(kind, work):
+        if rel not in mine and not skipped(rel):
+            (work / rel).unlink()  # you deleted it
+    for rel in mine:
+        data = (item / rel).read_bytes()
+        try:
+            text = data.decode()
+            if origin:
+                text = text.replace(str(item), origin)
+            if home and home != mine_home:
+                text = text.replace(mine_home + "/", home + "/")
+            data = text.encode()
+        except UnicodeDecodeError:
+            pass
+        (work / rel).parent.mkdir(parents=True, exist_ok=True)
+        (work / rel).write_bytes(data)
+    git("add", "-A", cwd=work)
+    return git("status", "--porcelain", cwd=work).stdout.splitlines()
+
+
+def ensure_fork(cfg: dict, kind: str, r: dict) -> str:
+    """Your fork of the item repo (created the first time; GitHub needs a few seconds)."""
+    fork = f"{cfg['owner']}/{fork_name(r['repo'])}"
+    found = gh_json(core.gh_api(f"repos/{fork}")) if core.gh_api(f"repos/{fork}").returncode == 0 else None
+    if found:
+        if (found.get("parent") or {}).get("full_name", "").lower() != r["repo"].lower():
+            die(f"{fork} exists but isn't a fork of {r['repo']}; rename or delete it.")
+        return fork
+    args = ["-X", "POST", f"repos/{r['repo']}/forks", "-f", f"name={fork_name(r['repo'])}",
+            "-F", "default_branch_only=true"]
+    if cfg.get("owner_is_org"):
+        args += ["-f", f"organization={cfg['owner']}"]
+    res = core.gh_api(*args)
+    if res.returncode != 0:
+        die(f"Could not fork {r['repo']}: {(res.stderr or res.stdout).strip()}\n"
+            f"  {r['owner']} hasn't turned on pull requests for it. Ask them to run once:\n"
+            f"      skylls{cmd_prefix(kind)} allow-prs {r['name']}")
+    for _ in range(30):
+        if git("ls-remote", "--heads", core.repo_url(fork), cwd=REPOS_CACHE, check=False).returncode == 0:
+            ok(f"Forked {r['repo']} → {fork} (private)")
+            return fork
+        time.sleep(2)
+    die(f"GitHub is still creating {fork}; run the same command again in a minute.")
+
+
+def cmd_propose(cfg: dict, kind: str, name: str, owner: Optional[str], message: Optional[str], skip: List[str],
+                skip_scan: bool, dry_run: bool) -> None:
+    """Send the changes you made to your copy of a friend's agent/swarm as a pull request in their repo."""
+    r = resolve(cfg, kind, name, owner)
+    p = cmd_prefix(kind)
+    if r["mine"]:
+        die(f"{r['name']} is yours: publish changes with skylls{p} push {r['name']}")
+    item, base = copy_of(cfg, kind, r)
+    section(f"Proposing your changes to {r['owner']}'s {one(kind)} {r['name']} (you have v{base})")
+    if not message and sys.stdin.isatty():
+        message = input(f"  {YELLOW}?{NC} What do your changes do? ").strip()
+    if not message:
+        die(f'Describe them: skylls{p} propose {r["name"]} --from {r["owner"]} -m "what and why"')
+    cache = sync_item(r["repo"])
+    if base not in versions(cache):
+        die(f"{r['repo']} has no v{base} any more; update your copy first (skylls{p} add {r['name']} -y).")
+    with tempfile.TemporaryDirectory() as tmp:
+        work = Path(tmp) / r["name"]
+        git("clone", "--quiet", str(cache), str(work), cwd=Path(tmp))
+        slug = re.sub(r"[^a-z0-9]+", "-", message.lower()).strip("-")[:40] or "changes"
+        branch = f"skylls/{slug}-{datetime.now():%Y%m%d-%H%M}"
+        git("checkout", "--quiet", "-b", branch, f"v{base}", cwd=work)
+        status = stage_proposal(kind, item, work, skip)
+        if not status:
+            ok(f"Your copy matches v{base}: nothing to propose.")
+            return
+        info(f"{len(status)} file(s) changed vs v{base}:")
+        for line in status:
+            say(f"    {line[:2].strip() or 'M'}  {line[3:]}")
+        if skip:
+            info(f"Left out: {', '.join(skip)}")
+        if not skip_scan:
+            scan = Path(tmp) / "scan" / r["name"]
+            for line in status:
+                rel = line[3:].split(" -> ")[-1]
+                if (work / rel).is_file():
+                    (scan / rel).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(work / rel, scan / rel)
+            if scan.exists():
+                core.scan_secrets(scan)
+        else:
+            warn("Skipping the secret scan (--skip-scan).")
+        if dry_run:
+            info(f"Would fork {r['repo']}, push branch {branch} and open a pull request in {r['repo']}")
+            return
+        fork = ensure_fork(cfg, kind, r)
+        res = git("commit", "--quiet", "-m", message, cwd=work, check=False)
+        if res.returncode != 0:
+            die("Could not commit. Set your git name and email:\n"
+                "    git config --global user.name 'Your Name'; git config --global user.email you@example.com")
+        git("push", "--quiet", core.repo_url(fork), f"HEAD:refs/heads/{branch}", cwd=work)
+        files = "\n".join(f"- `{line[3:]}`" for line in status)
+        body = (f"{message}\n\nChanged files (from v{base}):\n{files}\n\n---\n"
+                f"Proposed with skylls by @{cfg['login']}. Review: `skylls{p} review {r['name']}#<n>` · "
+                f"merge and publish: `skylls{p} accept {r['name']}#<n>` · `skylls{p} decline {r['name']}#<n>`.")
+        res = core.gh("pr", "create", "-R", r["repo"], "--head", f"{fork.split('/')[0]}:{branch}", "--base", "main",
+                      "--title", message.splitlines()[0][:80], "--body", body)
+        if res.returncode != 0:
+            die(f"Pushed {branch} to {fork}, but the pull request failed: {(res.stderr or res.stdout).strip()}")
+    ok(f"Pull request for {r['owner']}: {res.stdout.strip()}")
+    info(f"When they accept it you get it with: skylls{p} add {r['name']} --from {r['owner']} -y")
+
+
+def pr_of(repo: str, number: str) -> Optional[dict]:
+    """The pull request #number of repo, or None when #number is a plain suggestion (issue)."""
+    issue = gh_json(core.gh_api(f"repos/{repo}/issues/{number}")) or {}
+    if "pull_request" not in issue:
+        return None
+    return {"title": issue.get("title", ""), "author": (issue.get("user") or {}).get("login", ""),
+            "state": issue.get("state", "")}
+
+
+def cmd_review(cfg: dict, kind: str, ref: str) -> None:
+    """Show a suggestion; for a pull request, its changes and whether they apply to your copy."""
+    name, number = split_ref(kind, ref)
+    r = resolve(cfg, kind, name, cfg["owner"])
+    p = cmd_prefix(kind)
+    pr = pr_of(r["repo"], number)
+    if not pr:
+        res = gh_ok("issue", "view", number, "-R", r["repo"], what=f"No suggestion {r['repo']}#{number}")
+        say(res.stdout.rstrip())
+        info(f"Answer with: skylls{p} accept {name}#{number}  or  decline {name}#{number} [-m note]")
+        return
+    section(f"Pull request {name}#{number} by @{pr['author']}: {pr['title']}")
+    say(gh_ok("pr", "diff", number, "-R", r["repo"], what="Could not read the pull request").stdout.rstrip())
+    src = local_original(cfg, kind, r["name"])
+    if src:
+        _, conflicts = pr_changes(r["repo"], number, src)
+        if conflicts:
+            warn("You changed these files since that version too; accept would stop (or use --force to take theirs):\n"
+                 "    " + "\n    ".join(conflicts))
+    info(f"Merge and publish: skylls{p} accept {name}#{number} [-m note]   ·   skylls{p} decline {name}#{number}")
+
+
+def pr_changes(repo: str, number: str, src: Path) -> Tuple[List[Tuple[str, Optional[bytes]]], List[str]]:
+    """What the pull request changes, as (file, new content or None = deleted), and the files you also
+    changed locally since the version it started from (conflicts)."""
+    path = sync_item(repo)
+    ref = f"refs/skylls/pr-{number}"
+    git("fetch", "--quiet", "origin", f"+refs/pull/{number}/head:{ref}", cwd=path)
+    base = git("merge-base", "HEAD", ref, cwd=path).stdout.strip()
+    changes, conflicts = [], []
+    for line in git("diff", "--name-only", "--no-renames", base, ref, cwd=path).stdout.splitlines():
+        rel = line.strip()
+        if not rel or rel == core.CHANGELOG or ".." in rel.split("/"):
+            continue
+        theirs = subprocess.run(["git", "show", f"{ref}:{rel}"], cwd=path, capture_output=True)
+        before = subprocess.run(["git", "show", f"{base}:{rel}"], cwd=path, capture_output=True)
+        new = theirs.stdout if theirs.returncode == 0 else None
+        old = before.stdout if before.returncode == 0 else None
+        current = (src / rel).read_bytes() if (src / rel).is_file() else None
+        if current not in (old, new):
+            conflicts.append(rel)
+        changes.append((rel, new))
+    return changes, conflicts
+
+
+def accept_pr(cfg: dict, kind: str, r: dict, number: str, pr: dict, note: Optional[str], force: bool,
+              dry_run: bool) -> None:
+    """Merge a pull request the skylls way: into your own copy, then publish a new version and close it."""
+    p = cmd_prefix(kind)
+    src = local_original(cfg, kind, r["name"])
+    if not src:
+        die(f"Your own copy of {r['name']} isn't on this computer; accept it where you publish it from.")
+    changes, conflicts = pr_changes(r["repo"], number, src)
+    if conflicts and not force:
+        die("You changed these files since that version too:\n    " + "\n    ".join(conflicts) +
+            f"\n  See the changes with skylls{p} review {r['name']}#{number}; merge them by hand and decline, "
+            "or accept with --force to take theirs.")
+    if dry_run:
+        info(f"Would apply {len(changes)} file(s) from #{number} to {src}, publish a new version and close it")
+        return
+    for rel, data in changes:
+        target = src / rel
+        if data is None:
+            target.unlink(missing_ok=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+    ok(f"Applied {len(changes)} file(s) from @{pr['author']} to {src}")
+    publish(cfg, kind, src, f"Merged #{number} from @{pr['author']}: {pr['title']}", "minor", None, None,
+            False, False, ask=False)
+    version = installed_version(src)
+    core.gh("pr", "close", number, "-R", r["repo"], "--comment",
+            (note + "\n\n" if note else "") + f"Merged into v{version} with skylls. Thanks!")
+    ok(f"Closed {r['name']}#{number}; @{pr['author']} gets v{version} with: skylls{p} add {r['name']} -y")
+
+
+def split_ref(kind: str, ref: str) -> Tuple[str, str]:
+    name, _, number = ref.partition("#")
+    if not number.isdigit():
+        die(f"Use <name>#<number>, e.g. skylls{cmd_prefix(kind)} accept {name or 'pdf'}#3")
+    return name, number
 
 
 # ── Command line: the same subcommands for skills (top level), agents and swarms ──
@@ -1774,9 +2043,26 @@ def add_item_parsers(sub, kind: str, scoped) -> None:
     sp.add_argument("--from", dest="owner")
     sub.add_parser("suggestions", help=f"Open suggestions for your {kind}.").add_argument("name", nargs="?")
     for verb in ("accept", "decline"):
-        sp = sub.add_parser(verb, help="Answer a suggestion (<name>#<n>).")
+        sp = sub.add_parser(verb, help="Answer a suggestion or pull request (<name>#<n>).")
         sp.add_argument("ref", metavar="name#n")
         sp.add_argument("-m", "--message")
+        if verb == "accept":
+            sp.add_argument("--force", action="store_true",
+                            help="Pull request: take their version of files you also changed.")
+    sub.add_parser("review", help="Show a suggestion or a pull request's changes (<name>#<n>).").add_argument(
+        "ref", metavar="name#n")
+    if kind != "skills":
+        sp = sub.add_parser("propose", help=f"Send your changes to a friend's {o} as a pull request.")
+        sp.add_argument("name")
+        sp.add_argument("--from", dest="owner")
+        sp.add_argument("-m", "--message", help="What the changes do (the pull request's title).")
+        sp.add_argument("--skip", action="append", default=[], metavar="FILE",
+                        help="Leave out this file (pattern; repeatable), e.g. --skip scout/CLAUDE.md")
+        sp.add_argument("--skip-scan", action="store_true", help="Send without the secret scan.")
+        sp = sub.add_parser("allow-prs", help=f"Let people you share {an(o)} with send pull requests.")
+        sp.add_argument("name", nargs="?")
+        sp.add_argument("--all", dest="all_", action="store_true", help=f"Every {o} you published.")
+        sp.add_argument("--off", action="store_true", help="Turn it off again.")
     if kind != "skills":
         sp = sub.add_parser("remove", help=f"Remove {an(o)} folder from this computer (to the Trash).")
         sp.add_argument("name")
@@ -1817,6 +2103,12 @@ def run(cfg: dict, kind: str, cmd: str, args) -> None:
     elif cmd == "suggestions":
         cmd_suggestions(cfg, kind, args.name)
     elif cmd in ("accept", "decline"):
-        cmd_decide(cfg, kind, args.ref, cmd == "accept", args.message, args.dry_run)
+        cmd_decide(cfg, kind, args.ref, cmd == "accept", args.message, args.dry_run, getattr(args, "force", False))
+    elif cmd == "review":
+        cmd_review(cfg, kind, args.ref)
+    elif cmd == "propose":
+        cmd_propose(cfg, kind, args.name, args.owner, args.message, args.skip, args.skip_scan, args.dry_run)
+    elif cmd == "allow-prs":
+        cmd_allow_prs(cfg, kind, args.name, args.all_, args.off, args.dry_run)
     elif cmd == "remove":
         cmd_remove_item(cfg, kind, args.name, args.memory, args.yes, args.dry_run)

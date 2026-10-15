@@ -110,6 +110,24 @@ echo "--- alice follows carol the person: carol's organization comes along"; use
 user alice; s source add carol | grep Added; s list | grep -E "carolco|tax"
 python3 -c "import json;print('  alice friends:', json.load(open('$HOME/.config/skylls/config.json'))['friends'])"
 
+echo "######## PULL REQUESTS: bob proposes a change to alice's swarm, alice reviews and accepts"; user alice
+s swarms share apps @bob | grep Invited
+user bob; s list >/dev/null; s swarms add apps --from alice | grep Installed
+echo "Also count reviews: $HOME/swarms/apps/check.py" >> $HOME/swarms/apps/scout/CLAUDE.md
+echo "--- forks are off until alice allows them"; s swarms propose apps --from alice -m "Count reviews" --skip-scan | grep -E "allow-prs apps"
+user alice; s swarms allow-prs apps | grep -E "are on"
+user bob; s swarms propose apps --from alice -m "Count reviews" --skip-scan | grep -E "changed vs|scout/CLAUDE.md|Forked|Pull request"
+s swarms propose apps --from alice -m "Count reviews" --skip-scan --dry-run | grep -E "Would fork"
+user alice; s swarms suggestions | grep -E "apps#"; sj swarms suggestions | grep -o '"type":"[a-z ]*"'
+s swarms review apps#1 | grep -E "^\+Also count"
+echo "mine" >> $HOME/swarms/apps/scout/CLAUDE.md
+echo "--- alice changed the same file: accept stops"; s swarms accept apps#1 | grep -E "You changed|scout/CLAUDE.md" | head -2
+s swarms accept apps#1 --force | grep -E "Applied|Published|Closed"
+grep -c "home/alice/swarms/apps/check.py" $HOME/swarms/apps/scout/CLAUDE.md | sed 's/^/  paths put back to alice: /'
+s swarms suggestions | tail -1
+user bob; s swarms add apps --from alice -y | grep Installed; grep -m1 -A1 "^## " $HOME/swarms/apps/CHANGELOG.md
+grep -c "home/bob/swarms/apps/check.py" $HOME/swarms/apps/scout/CLAUDE.md | sed 's/^/  and back to bob in his copy: /'
+
 echo "######## remove agent, old config migration"; user bob
 s agents remove btc -y | tail -1
 mkdir -p $T/home/dave/.config/skylls; echo '{"repo": "dave/skills", "agents": ["codex"], "kinds": {}}' > $T/home/dave/.config/skylls/config.json

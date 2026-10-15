@@ -3,6 +3,22 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.8.0 — 2026-10-15
+
+- **Pull requests for agents and swarms:** `skylls swarms propose <name> --from
+  <owner> -m "what"` (also `agents`) sends the changes you made to your copy of
+  a friend's item as a real GitHub pull request: it compares your copy with the
+  version you installed, puts the owner's paths back, scans for secrets, forks
+  the repo (private, named `<repo>-from-<owner>`) and opens the pull request.
+  `--skip FILE` leaves files out.
+- **The owner answers it like a suggestion:** `suggestions` lists pull requests
+  too, `review <name>#<n>` shows the diff, `accept <name>#<n>` applies it to
+  their own copy, publishes a new version and closes it (it stops when they
+  changed the same files since; `--force` takes the proposal), `decline` closes
+  it.
+- **`allow-prs <name> | --all [--off]`:** friends can only fork once the owner
+  allows it (for an organization this also allows private forks in it).
+
 ## 1.7.4 — 2026-10-15
 
 - **Swarms share the scripts their instructions run:** a swarm was published
