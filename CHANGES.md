@@ -3,6 +3,13 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.7.3 — 2026-10-15
+
+- **`sync` shows progress right away:** the bar now also covers reading your
+  items from GitHub (invites, the repo list, item details), which is where a
+  sync spends its first seconds, and the final count (`40/40 checked`) stays
+  on screen instead of flashing by.
+
 ## 1.7.2 — 2026-10-15
 
 - **Progress bar in `sync`:** while it checks your published items it shows

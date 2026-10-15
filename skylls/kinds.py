@@ -321,6 +321,7 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
     Invites from people who aren't your friends yet are kept in _catalog["waiting"] (quiet: don't mention them)."""
     if "all" not in _catalog:
         owners = {cfg["owner"].lower(), cfg["login"].lower()} | {f.lower() for f in cfg.get("friends", [])}
+        core.progress(0, 1, "GitHub: checking invites")
         accepted, waiting, new_owners = accept_invites(owners)
         if new_owners:  # a friend shares from their organization: list its items too
             cfg.setdefault("friends", []).extend(sorted(new_owners))
@@ -333,6 +334,7 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
             info(f"@{who} shared {n} item{'s' if n != 1 else ''} with you: skylls source add {who}")
         repos, cursor = [], ""
         while True:
+            core.progress(0, 1, f"GitHub: listing your repos ({len(repos)} so far)")
             page = graphql(LIST_QUERY, **({"endCursor": cursor} if cursor else {}))["viewer"]["repositories"]
             repos += [f"{n['owner']['login']}/{n['name']}" for n in page["nodes"]]
             if not page["pageInfo"]["hasNextPage"]:
@@ -345,10 +347,12 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
         records_ = []
         for start in range(0, len(wanted), 40):
             chunk = wanted[start:start + 40]
+            core.progress(start, len(wanted), f"GitHub: reading items {start + 1}-{start + len(chunk)}")
             aliases = " ".join(f'r{i}: repository(owner: "{r.split("/")[0]}", name: "{r.split("/")[1]}") '
                                f'{{ {ITEM_FIELDS} }}' for i, r in enumerate(chunk))
             data = graphql(f"query {{ {aliases} }}")
             records_ += [rec for node in data.values() if node and (rec := to_record(cfg, node))]
+        core.progress_clear()
         _catalog["all"] = sorted(records_, key=lambda r: (r["kind"], r["name"].lower(), r["owner"].lower()))
     return [r for r in _catalog["all"] if (not kind or r["kind"] == kind)
             and (not owner or r["owner"].lower() == owner.lower())]
@@ -1271,6 +1275,7 @@ def installed_version(path: Path) -> Optional[str]:
 def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, yes: bool = False) -> None:
     """Publish what changed in your published items, then install newer versions of what friends shared."""
     published, updated, failed, unchanged_ = [], [], [], 0
+    section("Reading your items and your friends' from GitHub")
     mine_ = [r for r in catalog(cfg) if r["mine"]]
     section(f"Publishing your changes ({len(mine_)} published items)")
     for i, r in enumerate(mine_):
@@ -1290,7 +1295,8 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
             continue
         if installed_version(src) != before:
             published.append(f"{one(r['kind'])} {r['name']} v{installed_version(src)}")
-    core.progress_clear()
+    core.progress(len(mine_), len(mine_), "checked")
+    core.progress_done()
     if unchanged_:
         ok(f"Unchanged since the last version: {unchanged_} item{'s' if unchanged_ != 1 else ''}.")
     section("Getting newer versions of what friends shared with you")

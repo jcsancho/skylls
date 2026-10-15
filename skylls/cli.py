@@ -71,6 +71,15 @@ def progress_clear() -> None:
         _bar_shown = False
 
 
+def progress_done() -> None:
+    """Keep the bar's last state on screen (end its line) instead of erasing it."""
+    global _bar_shown
+    if _bar_shown:
+        sys.stderr.write("\n")
+        sys.stderr.flush()
+        _bar_shown = False
+
+
 def say(text: str) -> None:
     progress_clear()
     print(text, file=sys.stderr if JSON_MODE else sys.stdout)
