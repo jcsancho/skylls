@@ -3,6 +3,12 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.7.2 — 2026-10-15
+
+- **Progress bar in `sync`:** while it checks your published items it shows
+  a bar on the terminal (`█████░░░ 12/40 skill foo`). Only on a terminal,
+  never with `--json` or when output is piped.
+
 ## 1.7.1 — 2026-10-15
 
 - **Faster `sync` when little changed:** an item whose files match its

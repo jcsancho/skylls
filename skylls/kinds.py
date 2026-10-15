@@ -1273,13 +1273,15 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
     published, updated, failed, unchanged_ = [], [], [], 0
     mine_ = [r for r in catalog(cfg) if r["mine"]]
     section(f"Publishing your changes ({len(mine_)} published items)")
-    for r in mine_:
+    for i, r in enumerate(mine_):
+        core.progress(i, len(mine_), f"{one(r['kind'])} {r['name']}")
         src = local_original(cfg, r["kind"], r["name"])
         if not src:
             continue
         if unchanged(cfg, r, src, dry_run):
             unchanged_ += 1
             continue
+        core.progress_clear()  # publish prints and runs git/gitleaks
         before = installed_version(src)
         try:
             publish(cfg, r["kind"], src, message, "patch", None, None, skip_scan, dry_run, ask=False, yes=yes)
@@ -1288,6 +1290,7 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
             continue
         if installed_version(src) != before:
             published.append(f"{one(r['kind'])} {r['name']} v{installed_version(src)}")
+    core.progress_clear()
     if unchanged_:
         ok(f"Unchanged since the last version: {unchanged_} item{'s' if unchanged_ != 1 else ''}.")
     section("Getting newer versions of what friends shared with you")

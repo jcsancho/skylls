@@ -46,9 +46,33 @@ RED = "\033[0;31m"
 NC = "\033[0m"  # No color
 
 JSON_MODE = False  # --json: data as JSON lines on stdout, messages on stderr
+_bar_shown = False  # a progress bar is on the last line of the terminal
+
+
+def progress(done: int, total: int, label: str = "") -> None:
+    """Draw (or redraw in place) a progress bar on stderr; only on a terminal and never with --json."""
+    global _bar_shown
+    if JSON_MODE or total <= 0 or not sys.stderr.isatty():
+        return
+    width = 24
+    filled = width * min(done, total) // total
+    room = shutil.get_terminal_size().columns - width - len(f"{done}/{total}") - 7  # never wrap: \r only clears one line
+    label = label if len(label) <= room else label[:max(room - 1, 0)] + "…"
+    sys.stderr.write(f"\r\033[K  {CYAN}{'█' * filled}{'░' * (width - filled)}{NC} {done}/{total} {label}")
+    sys.stderr.flush()
+    _bar_shown = True
+
+
+def progress_clear() -> None:
+    global _bar_shown
+    if _bar_shown:
+        sys.stderr.write("\r\033[K")
+        sys.stderr.flush()
+        _bar_shown = False
 
 
 def say(text: str) -> None:
+    progress_clear()
     print(text, file=sys.stderr if JSON_MODE else sys.stdout)
 
 
