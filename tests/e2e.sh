@@ -30,7 +30,10 @@ A=$HOME/agents/btc; mkdir -p $A/wiki/.obsidian $A/logs $A/scripts; echo "# btc a
 echo page > $A/wiki/index.md; echo '{}' > $A/wiki/.obsidian/workspace.json; echo log > $A/logs/a.log; echo x > $A/scripts/run.py
 mkdir -p $A/wiki/.obsidian/plugins/style $A/.claude/skills/own; echo js > $A/wiki/.obsidian/plugins/style/main.js
 cp -R $HOME/.claude/skills/pdf $A/.claude/skills/pdf; echo "# own" > $A/.claude/skills/own/SKILL.md  # pdf: a reference
-s agents push btc -m first --skip-scan | grep -E "Memory|Published|reference"
+printf -- "---\nprivate: true\n---\nclient X owes us\n" > $A/wiki/clients.md  # private note: stays home
+s agents push btc -m first --skip-scan | grep -E "Memory|Published|reference|wiki/|private"
+git --git-dir $GHROOT/alice/skylls-agent-btc.git ls-tree -r --name-only HEAD | grep -q clients.md && echo "  FAIL: private note published" || echo "  ok: private note kept home"
+echo "decision" > $A/wiki/log.md; s agents push btc -m "log" --skip-scan --dry-run | grep -E "new or changed|wiki/"
 echo "  repo content:"; git --git-dir $GHROOT/alice/skylls-agent-btc.git ls-tree -r --name-only HEAD | paste -sd' ' -
 W=$HOME/swarms/apps; mkdir -p $W/.swarm $W/scout; echo "# apps swarm finds app ideas" > $W/CLAUDE.md; echo '{}' > $W/.swarm/agents.json
 echo "# scout" > $W/scout/CLAUDE.md; echo work > $W/scout/work.py; echo '{}' > $W/.swarm/bus.jsonl

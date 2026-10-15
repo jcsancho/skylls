@@ -184,6 +184,13 @@ it. Other skills in there are published as copies.
   `*-wiki`. All of it is published, except Obsidian's per-user window layout,
   its downloaded plugins and themes (`.obsidian/plugins/`, `.obsidian/themes/`),
   the trash and files over 5 MB.
+- **Private notes stay home:** a note whose frontmatter has `private: true`
+  is never published (client names, people, deals). Keep what friends may
+  learn from (method, lessons, playbooks) in plain notes; `.skyllsignore`
+  can also leave out whole paths.
+- **You see what goes out:** `push` and `sync` list the memory notes that
+  are new or changed since the last version and ask before publishing them
+  (`-y` publishes without asking; `--dry-run` only lists them).
 - **Memory elsewhere in `~/Obsidian`** still works:
   - Found from the instructions: a `<x>-wiki` vault they mention, or
     `<vault>/AGENTS/<name>/` for the item's own name.
@@ -340,7 +347,7 @@ Add `--dry-run` to any command to see what it would do without changing anything
 | `log <name> [--from O]` | Who made it, versions, what changed |
 | `installed [-g] [-a A]` | Installed skills and newer versions |
 | `pull [--update]` | Check for (and install) newer versions |
-| `sync [-m msg] [--skip-scan]` | Publish your changed items, then install friends' newer versions |
+| `sync [-m msg] [--skip-scan] [-y]` | Publish your changed items, then install friends' newer versions |
 | `remove <name> [-g] [-a A]` | Remove a local skill copy |
 | `push <name\|path> [-m msg] [--minor\|--major] [--about text] [--folder F] [--skip-scan]` | Publish a new version to its private repo |
 | `share <name> @user… \| --all @user` | Let friends install it (no users: who has access) |
@@ -353,7 +360,7 @@ Add `--dry-run` to any command to see what it would do without changing anything
 | `source [add\|remove] <login>` | Friends whose shares you see |
 | `suggest <name> [--from O] "text"` | Suggest an improvement to the owner |
 | `suggestions [name]` / `accept <name>#<n>` / `decline <name>#<n>` | Your open suggestions, and answering them |
-| `agents …` / `swarms …` | The same commands for agents and swarms, plus `add --as N --update-memory` and `remove [--memory] [-y]` |
+| `agents …` / `swarms …` | The same commands for agents and swarms, plus `add --as N --update-memory`, `push -y` (memory notes without asking) and `remove [--memory] [-y]` |
 | `agent-skill [-g] [-a A]` | (Re)install the skylls skill for your agents |
 | `search <query>` | Public skills on skills.sh |
 | `version` / `--version` | The skylls version |

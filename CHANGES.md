@@ -3,6 +3,18 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.7.0 — 2026-10-15
+
+- **Private memory notes:** a note in an agent's or swarm's memory whose
+  frontmatter says `private: true` is never published (also for memory kept
+  in `~/Obsidian`). Mixed memory can now live in one vault: lessons travel,
+  client names and other private facts stay home.
+- **Memory review before publishing:** `push` and `sync` list the memory
+  notes that are new or changed since the last version and ask before
+  publishing them. `-y` (new on agents/swarms `push` and on `sync`) skips the
+  question; `--dry-run` only lists them; without a terminal they are listed
+  and published.
+
 ## 1.6.1 — 2026-10-13
 
 - A friend who shares from their organization (`<org>/swarm-…`) now shows up:

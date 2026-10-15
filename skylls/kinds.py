@@ -493,6 +493,24 @@ def memory_file_ok(inner: str, size: int) -> bool:
         not any(fnmatch.fnmatch(inner, pat) or fnmatch.fnmatch(inner.rsplit("/", 1)[-1], pat) for pat in MEMORY_SKIP)
 
 
+PRIVATE_RE = re.compile(r"^private:\s*(?:true|yes)\s*$", re.I | re.M)
+
+
+def private_note(path: Path) -> bool:
+    """A memory note whose frontmatter says 'private: true' stays home."""
+    if path.suffix.lower() != ".md":
+        return False
+    try:
+        with path.open(errors="ignore") as f:
+            head = f.read(4096)
+    except OSError:
+        return False
+    if not head.startswith("---"):
+        return False
+    end = head.find("\n---", 3)
+    return bool(PRIVATE_RE.search(head[3:end if end > 0 else len(head)]))
+
+
 def shareable(kind: str, rel: str, rules: List[str], size: int = 0, memory: Tuple[str, ...] = ()) -> bool:
     """Is this file (path relative to the item) part of what is published and downloaded?"""
     parts = rel.split("/")
@@ -531,6 +549,8 @@ def local_files(kind: str, item: Path) -> List[str]:
             if path.is_symlink():
                 continue
             rel = path.relative_to(item).as_posix()
+            if in_memory and private_note(path):
+                continue
             if shareable(kind, rel, rules, path.stat().st_size, memory):
                 out.append(rel)
     return sorted(out)
@@ -624,7 +644,7 @@ def snapshot_memory(item: Path, roots: List[str]) -> int:
             for f in filenames:
                 src = Path(dirpath) / f
                 inner = src.relative_to(Path.home() / root).as_posix()
-                if not src.is_symlink() and memory_file_ok(inner, src.stat().st_size):
+                if not src.is_symlink() and memory_file_ok(inner, src.stat().st_size) and not private_note(src):
                     wanted[f"{root}/{inner}"] = src
     if snap.exists():
         for old in [p for p in snap.rglob("*") if p.is_file()]:
@@ -705,7 +725,7 @@ def local_item(cfg: dict, kind: str, name: str) -> Path:
 
 
 def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, about: Optional[str],
-            folder: Optional[str], skip_scan: bool, dry_run: bool, ask: bool = True) -> None:
+            folder: Optional[str], skip_scan: bool, dry_run: bool, ask: bool = True, yes: bool = False) -> None:
     """Publish a new version of one of your items to its own private repo (created if needed)."""
     src = src.resolve()
     name = check_name(src.name)
@@ -728,6 +748,9 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
         files = [f for f in files if not any(f.startswith(d + "/") for d in bundled)] + [SKILLS_MANIFEST]
         info(f"Skills from skylls, shared as a reference (friends get them from skylls): "
              f"{', '.join(sorted({d.rsplit('/', 1)[-1] for d in bundled}))}")
+
+    if kind != "skills":
+        review_memory(kind, src, repo, files, dry_run, yes)
 
     def place(rel: str, root: Path) -> None:
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -816,6 +839,28 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
         info(log["about"])
 
 
+def review_memory(kind: str, src: Path, repo: str, files: List[str], dry_run: bool, yes: bool) -> None:
+    """List the memory notes this publish adds or changes; ask before sending them (unless -y or no terminal)."""
+    memory = set(local_memory_dirs(src)) | {MEMORY_DIR}
+    notes = [f for f in files if "/" in f and f.split("/", 1)[0] in memory]
+    if not notes:
+        return
+    path = sync_item(repo) if core.gh("repo", "view", repo).returncode == 0 else None
+    new = [f for f in notes if not path or not (path / f).is_file()
+           or (path / f).read_bytes() != (src / f).read_bytes()]
+    if not new:
+        return
+    shown = ["~/" + f[len(MEMORY_DIR) + 1:] if f.startswith(MEMORY_DIR + "/") else f for f in new]
+    warn(f"Memory notes friends will get ({len(new)} new or changed):\n    " + "\n    ".join(shown[:20])
+         + (f"\n    … and {len(new) - 20} more" if len(new) > 20 else ""))
+    info("Keep a note home: put 'private: true' in its frontmatter, or list it in .skyllsignore.")
+    if dry_run or yes or not sys.stdin.isatty():
+        return
+    answer = input(f"  {YELLOW}?{NC} Publish these memory notes? (y/N): ").strip().lower()
+    if answer not in ("y", "yes"):
+        die(f"Nothing published for {src.name}.")
+
+
 def set_folder(repo: str, folder: Optional[str]) -> None:
     """Put an item in a folder (a GitHub topic); '' or '.' takes it out of any folder."""
     if folder is None:
@@ -843,7 +888,8 @@ def cmd_push(cfg: dict, kind: str, args) -> None:
             src = given
     if not src.is_dir():
         die(f"No {one(kind)} '{args.name}' in {src.parent}.")
-    publish(cfg, kind, src, args.message, args.part, args.about, args.folder, args.skip_scan, args.dry_run)
+    publish(cfg, kind, src, args.message, args.part, args.about, args.folder, args.skip_scan, args.dry_run,
+            yes=getattr(args, "yes", False))
 
 
 def print_record(r: dict, indent: int = 2) -> None:
@@ -1188,7 +1234,7 @@ def installed_version(path: Path) -> Optional[str]:
     return log["entries"][0]["version"] if log["entries"] else None
 
 
-def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool) -> None:
+def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, yes: bool = False) -> None:
     """Publish what changed in your published items, then install newer versions of what friends shared."""
     published, updated, failed = [], [], []
     mine_ = [r for r in catalog(cfg) if r["mine"]]
@@ -1199,7 +1245,7 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool) 
             continue
         before = installed_version(src)
         try:
-            publish(cfg, r["kind"], src, message, "patch", None, None, skip_scan, dry_run, ask=False)
+            publish(cfg, r["kind"], src, message, "patch", None, None, skip_scan, dry_run, ask=False, yes=yes)
         except SystemExit:  # e.g. the secret scan found something: the others still go
             failed.append(f"{one(r['kind'])} {r['name']}")
             continue
@@ -1626,6 +1672,8 @@ def add_item_parsers(sub, kind: str, scoped) -> None:
         sp.add_argument("--skip-scan", action="store_true", help="Publish without the secret scan.")
         if kind == "skills":
             scoped(sp)
+        else:
+            sp.add_argument("-y", "--yes", action="store_true", help="Publish new memory notes without asking.")
     sp = sub.add_parser("log", help="Who made it, versions and what changed.")
     sp.add_argument("name")
     sp.add_argument("--from", dest="owner")
