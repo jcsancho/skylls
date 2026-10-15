@@ -446,7 +446,8 @@ skylls share --all @bob        <span class="cm"># every skill you published</spa
 skylls share pdf               <span class="cm"># who has access</span>
 skylls unshare pdf @bob        <span class="cm"># revoke (what Bob installed stays on his machine)</span>
 skylls revoke @bob             <span class="cm"># take back everything you shared with Bob (asks first)</span>
-skylls agents share --all @bob <span class="cm"># every agent (swarms: skylls swarms share …)</span></code></pre>
+skylls agents share --all @bob <span class="cm"># every agent (swarms: skylls swarms share …)</span>
+skylls swarms share apps @bob --prs  <span class="cm"># also let them send <a href="#pull-requests">pull requests</a> (asked when not given; --no-prs)</span></code></pre>
         <ul>
           <li><strong>Who sees what:</strong> friends see <strong>only the items you shared with them</strong>, and GitHub enforces it. skylls invites them to single repos as <em>outside collaborators</em>, who can't see your other repos, even in the same organization.</li>
           <li><strong>Access level:</strong> with an organization, friends get <strong>read-only</strong> access. On a personal account, GitHub gives everyone you invite write access to that repo; skylls never pushes to friends' repos, but plain git could.</li>
@@ -500,6 +501,7 @@ skylls swarms decline opportunity-hunter#3 -m "I keep my helpers"</code></pre>
           <li><code>accept</code> stops if the owner changed a file the pull request also changes since the version it started from; <code>--force</code> takes the proposal.</li>
           <li>Memory and skills shared by reference are never part of a pull request.</li>
           <li>Accept with skylls, not on github.com: a merge there would be overwritten by the owner's next <code>push</code>.</li>
+          <li>Sharing an agent or swarm asks whether the people you share it with may send pull requests (<code>--prs</code> / <code>--no-prs</code> answer it up front). It's one switch per item: everyone you share that item with can, or nobody.</li>
           <li><code>allow-prs --off</code> turns it off again. For an organization, <code>allow-prs</code> also allows private forks in it.</li>
         </ul>
       </section>

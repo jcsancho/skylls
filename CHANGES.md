@@ -3,6 +3,17 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.9.0 — 2026-10-15
+
+- **Sharing an agent or swarm asks about pull requests:** `share <name> @user`
+  asks whether the people you share it with may send their changes as pull
+  requests (when that isn't on yet). `--prs` / `--no-prs` answer it up front;
+  without a terminal it's left as it is and the hint says how to allow them.
+
+## webapp 1.8.2 — 2026-10-15
+
+- Docs, `/llms.txt` and `/skill.md`: `share … --prs / --no-prs`.
+
 ## webapp 1.8.1 — 2026-10-15
 
 - **Docs for pull requests:** a "Pull requests" section in the docs

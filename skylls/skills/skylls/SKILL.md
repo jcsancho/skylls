@@ -39,6 +39,7 @@ Read an installed SKILL.md only when you are about to use it.
     skylls push <name> -m "what changed"             # skill → its own private repo (<org>/skill-<name>)
     skylls agents push <name> -m "what changed"      # ~/agents/<name> (also: swarms push)
     skylls share <name> @user                        # one item to one person (agents share …)
+    skylls swarms share <name> @user --prs|--no-prs  # agents/swarms: ask the user whether they may send pull requests
     skylls unshare <name> @user                      # take one item back; skylls revoke @user = everything
     skylls source add <friend>                       # see what a friend shared with the user
     skylls sync -m "what changed"                    # publish all the user's changed items + install friends' new versions

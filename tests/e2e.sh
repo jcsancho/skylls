@@ -111,7 +111,7 @@ user alice; s source add carol | grep Added; s list | grep -E "carolco|tax"
 python3 -c "import json;print('  alice friends:', json.load(open('$HOME/.config/skylls/config.json'))['friends'])"
 
 echo "######## PULL REQUESTS: bob proposes a change to alice's swarm, alice reviews and accepts"; user alice
-s swarms share apps @bob | grep Invited
+s swarms share apps @bob | grep -E "Invited|Pull requests from them are off"
 user bob; s list >/dev/null; s swarms add apps --from alice | grep Installed
 echo "Also count reviews: $HOME/swarms/apps/check.py" >> $HOME/swarms/apps/scout/CLAUDE.md
 echo "--- forks are off until alice allows them"; s swarms propose apps --from alice -m "Count reviews" --skip-scan | grep -E "allow-prs apps"
@@ -125,6 +125,8 @@ echo "--- alice changed the same file: accept stops"; s swarms accept apps#1 | g
 s swarms accept apps#1 --force | grep -E "Applied|Published|Closed"
 grep -c "home/alice/swarms/apps/check.py" $HOME/swarms/apps/scout/CLAUDE.md | sed 's/^/  paths put back to alice: /'
 s swarms suggestions | tail -1
+echo "--- share asks about pull requests: --no-prs turns them off, --prs on"
+s swarms share apps @bob --no-prs | grep -E "are off"; s swarms share apps @bob --prs | grep -E "are on"
 user bob; s swarms add apps --from alice -y | grep Installed; grep -m1 -A1 "^## " $HOME/swarms/apps/CHANGELOG.md
 grep -c "home/bob/swarms/apps/check.py" $HOME/swarms/apps/scout/CLAUDE.md | sed 's/^/  and back to bob in his copy: /'
 

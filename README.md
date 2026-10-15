@@ -212,6 +212,7 @@ it. Other skills in there are published as copies.
 skylls share pdf @bob @carol        # invite to one item
 skylls share --all @bob             # every skill you published (agents/swarms: skylls agents share --all @bob)
 skylls share pdf                    # who has access
+skylls swarms share apps @bob --prs # agents/swarms: also let Bob send pull requests (asked when not given; --no-prs)
 skylls unshare pdf @bob             # revoke (what Bob installed stays on his machine)
 skylls revoke @bob                  # take back everything (skills, agents, swarms, pending invites)
 skylls shared                      # what you shared and with whom + what friends shared with you

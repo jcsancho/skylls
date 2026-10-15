@@ -107,6 +107,7 @@ Obsidian memory; a swarm is a team of agents. Same commands under `skylls agents
 - Agents and swarms: friends can also send their changes as a pull request (only when the user asks):
 
       skylls swarms allow-prs <name>          # owner, once: let the people you share with send pull requests
+      skylls swarms share <name> @user --prs  # or answer it while sharing (asked otherwise; agents: ask the user, pass --prs/--no-prs)
       skylls swarms propose <name> --from O -m "what"   # diff vs the installed version → fork + pull request
       skylls swarms review <name>#<n>         # owner: the diff
       skylls swarms accept <name>#<n>         # owner: apply to their copy, publish a new version, close it

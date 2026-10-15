@@ -1377,7 +1377,8 @@ def pending_invites(repo: str) -> dict:
     return {i["invitee"]["login"].lower(): i["id"] for i in invites if i.get("invitee")}
 
 
-def cmd_share(cfg: dict, kind: str, name: Optional[str], users: List[str], all_: bool, dry_run: bool) -> None:
+def cmd_share(cfg: dict, kind: str, name: Optional[str], users: List[str], all_: bool, dry_run: bool,
+              prs: Optional[bool] = None) -> None:
     repos = my_repos(cfg, kind, name, all_)
     if not users:
         for repo in repos:
@@ -1406,6 +1407,47 @@ def cmd_share(cfg: dict, kind: str, name: Optional[str], users: List[str], all_:
         info(f"They add you once with: skylls source add {cfg['owner']}"
              + ("" if org else "  (on personal repos GitHub gives collaborators write access; "
                                "skylls only ever reads friends' repos)"))
+    if kind != "skills":
+        share_prs(cfg, kind, repos, prs, dry_run)
+
+
+def forks_allowed(repo: str) -> bool:
+    return bool((gh_json(core.gh_api(f"repos/{repo}")) or {}).get("allow_forking"))
+
+
+def share_prs(cfg: dict, kind: str, repos: List[str], prs: Optional[bool], dry_run: bool) -> None:
+    """When sharing an agent/swarm: may the people you share it with send pull requests (--prs / --no-prs)?
+    Asked when it isn't on yet and you're at a terminal; agents must pass the user's answer as a flag."""
+    p = cmd_prefix(kind)
+    if prs is None:
+        off = [r for r in repos if not forks_allowed(r)]
+        if not off:
+            info("Pull requests from the people you share with: on (turn off: skylls"
+                 f"{p} allow-prs <name> --off)")
+            return
+        if not sys.stdin.isatty():
+            info(f"Pull requests from them are off. Allow them with --prs (or later: skylls{p} allow-prs <name>)")
+            return
+        prs = input(f"  {YELLOW}?{NC} Let the people you share it with send their changes as pull requests "
+                    "(you review and accept each one)? (y/N) ").strip().lower() in ("y", "yes")
+        repos = off
+    set_prs(cfg, repos, prs, dry_run)
+
+
+def set_prs(cfg: dict, repos: List[str], on: bool, dry_run: bool) -> None:
+    """Turn forking (= pull requests from the people you share with) on or off for your item repos."""
+    org = cfg["owner"] if cfg.get("owner_is_org") else None
+    if dry_run:
+        info(f"Would turn pull requests {'on' if on else 'off'} for {', '.join(repos)}")
+        return
+    if org and on:
+        res = core.gh_api("-X", "PATCH", f"orgs/{org}", "-F", "members_can_fork_private_repositories=true")
+        if res.returncode != 0:
+            warn(f"Could not allow private forks in {org} (you must own it): {res.stderr.strip()}")
+    for repo in repos:
+        gh_ok("api", "-X", "PATCH", f"repos/{repo}", "-F", f"allow_forking={'true' if on else 'false'}",
+              what=f"Could not change pull requests for {repo}")
+        ok(f"{repo}: pull requests from the people you share it with are {'on' if on else 'off'}")
 
 
 def cmd_unshare(cfg: dict, kind: str, name: Optional[str], users: List[str], all_: bool, dry_run: bool) -> None:
@@ -1742,22 +1784,8 @@ def fork_name(repo: str) -> str:
 
 def cmd_allow_prs(cfg: dict, kind: str, name: Optional[str], all_: bool, off: bool, dry_run: bool) -> None:
     """Let the people you share with fork your items, so they can send changes as pull requests."""
-    repos = my_repos(cfg, kind, name, all_)
-    org = cfg["owner"] if cfg.get("owner_is_org") else None
-    state = "false" if off else "true"
-    if dry_run:
-        info(f"Would {'turn off' if off else 'allow'} forks (pull requests from friends) for {', '.join(repos)}"
-             + (f" and allow private forks in {org}" if org and not off else ""))
-        return
-    if org and not off:
-        res = core.gh_api("-X", "PATCH", f"orgs/{org}", "-F", "members_can_fork_private_repositories=true")
-        if res.returncode != 0:
-            warn(f"Could not allow private forks in {org} (you must own it): {res.stderr.strip()}")
-    for repo in repos:
-        gh_ok("api", "-X", "PATCH", f"repos/{repo}", "-F", f"allow_forking={state}",
-              what=f"Could not change forking for {repo}")
-        ok(f"{repo}: pull requests from the people you share it with are {'off' if off else 'on'}")
-    if not off:
+    set_prs(cfg, my_repos(cfg, kind, name, all_), not off, dry_run)
+    if not off and not dry_run:
         info(f"They send changes with: skylls{cmd_prefix(kind)} propose <name> --from {cfg['owner']} -m \"what\"")
 
 
@@ -2033,6 +2061,11 @@ def add_item_parsers(sub, kind: str, scoped) -> None:
     sp.add_argument("name", nargs="?")
     sp.add_argument("users", nargs="*", metavar="@user")
     sp.add_argument("--all", dest="all_", action="store_true", help=f"Every {o} you published.")
+    if kind != "skills":
+        g = sp.add_mutually_exclusive_group()
+        g.add_argument("--prs", dest="prs", action="store_const", const=True, default=None,
+                       help="Also let them send pull requests with their changes (asked if not given).")
+        g.add_argument("--no-prs", dest="prs", action="store_const", const=False, help="Don't (turns it off).")
     sp = sub.add_parser("unshare", help="Revoke access.")
     sp.add_argument("name", nargs="?")
     sp.add_argument("users", nargs="*", metavar="@user")
@@ -2097,7 +2130,10 @@ def run(cfg: dict, kind: str, cmd: str, args) -> None:
         fix_share_args(args)
         if cmd == "unshare" and not args.users:
             die(f"Who? skylls{cmd_prefix(kind)} unshare <name> @user")
-        (cmd_share if cmd == "share" else cmd_unshare)(cfg, kind, args.name, args.users, args.all_, args.dry_run)
+        if cmd == "share":
+            cmd_share(cfg, kind, args.name, args.users, args.all_, args.dry_run, getattr(args, "prs", None))
+        else:
+            cmd_unshare(cfg, kind, args.name, args.users, args.all_, args.dry_run)
     elif cmd == "suggest":
         cmd_suggest(cfg, kind, args.name, args.owner, args.text, args.dry_run)
     elif cmd == "suggestions":
