@@ -43,7 +43,12 @@ Read an installed SKILL.md only when you are about to use it.
     skylls source add <friend>                       # see what a friend shared with the user
     skylls sync -m "what changed"                    # publish all the user's changed items + install friends' new versions
     skylls suggest <name> --from <owner> "idea"      # improve someone else's item
+    skylls swarms propose <name> --from <owner> -m "what"   # your changes to a friend's agent/swarm copy → pull request
+    skylls swarms allow-prs <name> | --all           # owner: let the people you share with send pull requests
+    skylls suggestions / review <name>#<n> / accept <name>#<n> / decline <name>#<n>   # owner: answer (accept merges + publishes)
 - Push scans for API keys and personal data and refuses if it finds any: remove them, never use --skip-scan on your own.
+- Agent/swarm memory notes go with them, except notes with `private: true` in their frontmatter: write private facts (clients, people, money) there.
+- Agents/swarms push and sync list new memory notes and ask; show the user that list, use -y only after they agree.
 - Sharing access and removing things are the user's decisions; never do them unprompted.
 
 ## Rules

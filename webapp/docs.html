@@ -208,6 +208,7 @@
       <a href="#sharing">Sharing</a>
       <a href="#friends">Seeing friends' items</a>
       <a href="#suggestions">Suggestions</a>
+      <a href="#pull-requests">Pull requests</a>
       <a href="#folders">Folders</a>
       <p>More</p>
       <a href="#dashboard">The dashboard</a>
@@ -479,6 +480,30 @@ skylls accept pdf#3 -m "Done in 1.3.0"                       <span class="cm"># 
 skylls decline pdf#4 -m "Out of scope"                       <span class="cm"># closes it as not planned</span></code></pre>
       </section>
 
+      <!-- Pull requests -->
+      <section id="pull-requests">
+        <h2><a href="#pull-requests">Pull requests (agents and swarms)</a></h2>
+        <p>Changed your copy of a friend's agent or swarm and want them to have it? Send it as a real GitHub pull request. They review it and, when they accept, skylls merges it into <strong>their</strong> copy and publishes a new version, which you install like any update.</p>
+<pre><code><span class="cm"># the owner, once per item (or --all): let the people they share with send pull requests</span>
+skylls swarms allow-prs opportunity-hunter
+
+<span class="cm"># you: compare your copy with the version you installed and send the difference</span>
+skylls swarms propose opportunity-hunter --from alyssa -m "Add the new data tools"
+
+<span class="cm"># the owner: review and answer</span>
+skylls swarms suggestions                        <span class="cm"># opportunity-hunter#3  Add the new data tools  (pull request)</span>
+skylls swarms review opportunity-hunter#3        <span class="cm"># the diff, and a warning if you changed the same files</span>
+skylls swarms accept opportunity-hunter#3        <span class="cm"># applies it to your folder, publishes a new version, closes it</span>
+skylls swarms decline opportunity-hunter#3 -m "I keep my helpers"</code></pre>
+        <ul>
+          <li><code>propose</code> lists the changed files (leave some out with <code>--skip FILE</code>), scans them for secrets, puts the owner's paths back (an install points them at yours), forks the repo privately into your account or organization (<code>&lt;repo&gt;-from-&lt;owner&gt;</code>) and opens the pull request.</li>
+          <li><code>accept</code> stops if the owner changed a file the pull request also changes since the version it started from; <code>--force</code> takes the proposal.</li>
+          <li>Memory and skills shared by reference are never part of a pull request.</li>
+          <li>Accept with skylls, not on github.com: a merge there would be overwritten by the owner's next <code>push</code>.</li>
+          <li><code>allow-prs --off</code> turns it off again. For an organization, <code>allow-prs</code> also allows private forks in it.</li>
+        </ul>
+      </section>
+
       <!-- Folders -->
       <section id="folders">
         <h2><a href="#folders">Folders</a></h2>
@@ -586,7 +611,9 @@ skylls add anthropics/skills/pdf -g        <span class="cm"># install straight f
             <tr><td><code>folder [rename old new | remove F]</code></td><td>Your folders</td></tr>
             <tr><td><code>source [add|remove] &lt;login&gt;</code></td><td>Friends whose shares you see</td></tr>
             <tr><td><code>suggest &lt;name&gt; [--from O] "text"</code></td><td>Suggest an improvement to the owner</td></tr>
-            <tr><td><code>suggestions [name]</code> / <code>accept &lt;name&gt;#&lt;n&gt;</code> / <code>decline &lt;name&gt;#&lt;n&gt;</code></td><td>Your open suggestions, and answering them</td></tr>
+            <tr><td><code>suggestions [name]</code> / <code>review &lt;name&gt;#&lt;n&gt;</code> / <code>accept &lt;name&gt;#&lt;n&gt;</code> / <code>decline &lt;name&gt;#&lt;n&gt;</code></td><td>Your open suggestions and pull requests, and answering them</td></tr>
+            <tr><td><code>agents|swarms propose &lt;name&gt; [--from O] -m "…"</code></td><td>Send your changes to a friend's agent/swarm as a <a href="#pull-requests">pull request</a></td></tr>
+            <tr><td><code>agents|swarms allow-prs &lt;name&gt; | --all [--off]</code></td><td>Let the people you share with send pull requests</td></tr>
             <tr><td><code>agents …</code> / <code>swarms …</code></td><td>The same commands for agents and swarms, plus <code>add --as N --update-memory</code> and <code>remove [--memory] [-y]</code></td></tr>
             <tr><td><code>agent-skill [-g] [-a A]</code></td><td>(Re)install the skylls skill for your agents</td></tr>
             <tr><td><code>search &lt;query&gt;</code></td><td>Public skills on skills.sh</td></tr>
@@ -606,7 +633,7 @@ skylls add anthropics/skills/pdf -g        <span class="cm"># install straight f
         <h3>What happens to a friend's copy when I unshare?</h3>
         <p>What they already installed stays on their machine. They just can't get new versions.</p>
         <h3>Can friends change my skill?</h3>
-        <p>No. Only you publish. Friends send <a href="#suggestions">suggestions</a>, which you accept or decline.</p>
+        <p>No. Only you publish. Friends send <a href="#suggestions">suggestions</a>, and for agents and swarms also <a href="#pull-requests">pull requests</a> with their changes; you accept or decline.</p>
         <h3>The secret scan stopped my push, but it's a false positive.</h3>
         <p>Check the finding first. If it really is safe, push again with <code>--skip-scan</code>.</p>
         <h3>Two friends have a skill with the same name.</h3>

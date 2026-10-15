@@ -3,6 +3,13 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.8.1 — 2026-10-15
+
+- **Docs for pull requests:** a "Pull requests" section in the docs
+  (`allow-prs`, `propose`, `review`, `accept`, `decline`), the command table and
+  FAQ updated, the same in `/llms.txt`, and `/skill.md` copied from the CLI's
+  skylls skill again (it also lacked the memory-note rules).
+
 ## 1.8.0 — 2026-10-15
 
 - **Pull requests for agents and swarms:** `skylls swarms propose <name> --from
