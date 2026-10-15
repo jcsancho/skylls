@@ -37,8 +37,14 @@ echo "decision" > $A/wiki/log.md; s agents push btc -m "log" --skip-scan --dry-r
 echo "  repo content:"; git --git-dir $GHROOT/alice/skylls-agent-btc.git ls-tree -r --name-only HEAD | paste -sd' ' -
 W=$HOME/swarms/apps; mkdir -p $W/.swarm $W/scout; echo "# apps swarm finds app ideas" > $W/CLAUDE.md; echo '{}' > $W/.swarm/agents.json
 echo "# scout" > $W/scout/CLAUDE.md; echo work > $W/scout/work.py; echo '{}' > $W/.swarm/bus.jsonl
+# scripts the instructions run are shared with them (check.py by full path, tally.sh relative to its role)
+echo 'Done when `python3 ~/swarms/apps/check.py 1` prints ALL PASS.' >> $W/CLAUDE.md; echo 'print("ALL PASS")' > $W/check.py
+echo 'Count with `bash tally.sh`.' >> $W/scout/CLAUDE.md; echo 'echo 3' > $W/scout/tally.sh
 s swarms push apps -m first --skip-scan | grep Published
 echo "  repo content:"; git --git-dir $GHROOT/alice/skylls-swarm-apps.git ls-tree -r --name-only HEAD | paste -sd' ' -
+C=$(git --git-dir $GHROOT/alice/skylls-swarm-apps.git ls-tree -r --name-only HEAD)
+case "$C" in *check.py*scout/tally.sh*) case "$C" in *work.py*) echo "  FAIL: unreferenced work.py shared";; *) echo "  ok: referenced scripts shared, work.py not";; esac;;
+  *) echo "  FAIL: check.py / scout/tally.sh missing from the swarm repo";; esac
 echo "  tags pdf:"; git --git-dir $GHROOT/alice/skylls-skill-pdf.git tag | paste -sd' ' -
 echo "  private/topics:"; python3 -c "import json;s=json.load(open('$GHROOT/state.json'));[print(' ',k,v['private'],v['topics']) for k,v in s['repos'].items()]"
 echo "--- list / folder / find --json / log --json"

@@ -3,6 +3,16 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.7.4 — 2026-10-15
+
+- **Swarms share the scripts their instructions run:** a swarm was published
+  as its instructions and settings only, so a script next to them that the
+  instructions call (`python3 check_cards.py <n>`, `~/swarms/x/set_goal.sh`)
+  was silently left out and a friend's copy broke at that step. Scripts
+  (`.py`, `.sh`, `.js`, `.ts`, `.rb`, `.pl`) mentioned in the top-level or a
+  role's `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` are now published with it;
+  other files still stay home (runtime folders like `scratch/` too).
+
 ## 1.7.3 — 2026-10-15
 
 - **`sync` shows progress right away:** the bar now also covers reading your

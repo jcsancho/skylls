@@ -37,7 +37,7 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 from skylls import cli as core
 from skylls.cli import BLUE, CYAN, GREEN, NC, YELLOW, die, emit, fail, git, info, ok, say, section, warn
@@ -62,6 +62,10 @@ SWARM_KEEP = ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "README.md", "CHANGELOG.md"
               ".skylls-skills",
               ".claude/*", ".swarm/agents.json", ".swarm/schedules.json", "*/CLAUDE.md", "*/AGENTS.md",
               "*/GEMINI.md", "*/.claude/*"]
+# ... plus the scripts those instructions run (`python3 check_cards.py`, `~/swarms/x/set_goal.sh`): without them
+# a friend's copy of the swarm breaks at the first step that calls one.
+INSTRUCTION_FILES = ("CLAUDE.md", "AGENTS.md", "GEMINI.md")
+SCRIPT_REF_RE = re.compile(r"[\w.~/-]*[\w-]\.(?:py|sh|js|mjs|cjs|ts|rb|pl)\b")
 MEMORY_NAMES = {"memory", "wiki", "obsidian"}  # in-folder memory, besides any Obsidian vault or *-wiki
 MEMORY_DIR = ".skylls-memory"  # snapshot of memory kept outside the item, by path under the owner's home
 # Obsidian's per-user state and downloaded plugins/themes (third-party code) are not shared.
@@ -519,7 +523,34 @@ def private_note(path: Path) -> bool:
     return bool(PRIVATE_RE.search(head[3:end if end > 0 else len(head)]))
 
 
-def shareable(kind: str, rel: str, rules: List[str], size: int = 0, memory: Tuple[str, ...] = ()) -> bool:
+def referenced_scripts(item: Path) -> FrozenSet[str]:
+    """Scripts inside a swarm that its instruction files (top level and per role) mention, as paths relative to it.
+    A mention may be relative to the instruction file, to the swarm, or a longer path ending in one of those."""
+    found = set()
+    docs = [item / n for n in INSTRUCTION_FILES] + [d for n in INSTRUCTION_FILES for d in item.glob(f"*/{n}")]
+    for doc in docs:
+        if not doc.is_file():
+            continue
+        for ref in set(SCRIPT_REF_RE.findall(doc.read_text(errors="ignore"))):
+            parts = [x for x in ref.split("/") if x not in ("", ".", "~")]
+            for i in range(len(parts)):  # longest suffix first: '~/swarms/x/check_cards.py' → 'check_cards.py'
+                tail = "/".join(parts[i:])
+                for base in (doc.parent, item):
+                    cand = base / tail
+                    if cand.is_file() and not cand.is_symlink():
+                        try:
+                            found.add(cand.resolve().relative_to(item.resolve()).as_posix())
+                        except ValueError:
+                            pass
+                        break
+                else:
+                    continue
+                break
+    return frozenset(found)
+
+
+def shareable(kind: str, rel: str, rules: List[str], size: int = 0, memory: Tuple[str, ...] = (),
+              scripts: FrozenSet[str] = frozenset()) -> bool:
     """Is this file (path relative to the item) part of what is published and downloaded?"""
     parts = rel.split("/")
     if kind != "skills" and len(parts) > 1 and (parts[0] in memory or parts[0] == MEMORY_DIR):
@@ -531,7 +562,7 @@ def shareable(kind: str, rel: str, rules: List[str], size: int = 0, memory: Tupl
                 and not any(fnmatch.fnmatch(parts[-1], pat) for pat in RUNTIME_FILES)
                 and not rel.startswith(".agent/state/"))
         if kind == "swarms":
-            keep = keep and any(fnmatch.fnmatch(rel, pat) for pat in SWARM_KEEP)
+            keep = keep and (any(fnmatch.fnmatch(rel, pat) for pat in SWARM_KEEP) or rel in scripts)
     for rule in rules:
         negate = rule.startswith("!")
         if rule_matches(rel, rule[1:] if negate else rule):
@@ -547,6 +578,7 @@ def local_files(kind: str, item: Path) -> List[str]:
     if kind != "skills" and not any(r.startswith("!") for r in rules):
         prune |= RUNTIME_DIRS
     memory = tuple(local_memory_dirs(item)) if kind != "skills" else ()
+    scripts = referenced_scripts(item) if kind == "swarms" else frozenset()
     out = []
     for dirpath, dirnames, filenames in os.walk(item):
         top = Path(dirpath).relative_to(item).parts[:1]
@@ -559,7 +591,7 @@ def local_files(kind: str, item: Path) -> List[str]:
             rel = path.relative_to(item).as_posix()
             if in_memory and private_note(path):
                 continue
-            if shareable(kind, rel, rules, path.stat().st_size, memory):
+            if shareable(kind, rel, rules, path.stat().st_size, memory, scripts):
                 out.append(rel)
     return sorted(out)
 
