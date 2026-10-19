@@ -12,6 +12,7 @@ export function fakeGitHub() {
     calls: [],
     refresh: {}, // refresh token -> login
     refreshed: 0,
+    maxAliases: Infinity, // more repos in one GraphQL query: 504, like GitHub when it takes too long
   };
 
   function addRepo(full, { topics = ["skylls"], files = {}, isPrivate = true } = {}) {
@@ -79,6 +80,7 @@ export function fakeGitHub() {
           .filter((f) => canSee(who, f) && (orgsToo || state.users[f.split("/")[0]] !== "Organization")).map((f) => ({ name: f.split("/")[1], owner: { login: f.split("/")[0] } }));
         return send(200, { data: { viewer: { login: who, repositories: { nodes, pageInfo: { hasNextPage: false, endCursor: null } } } } });
       }
+      if ((q.match(/: repository\(/g) || []).length > state.maxAliases) return { status: 504, raw: "" };
       const data = {};
       for (const [, alias, owner, name] of q.matchAll(/(r\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\)/g)) {
         data[alias] = canSee(who, `${owner}/${name}`) ? node(who, `${owner}/${name}`) : null;
@@ -141,9 +143,9 @@ export function fakeGitHub() {
     const chunks = [];
     for await (const c of req) chunks.push(c);
     const text = Buffer.concat(chunks).toString();
-    const { status, data, location } = await handle(req, text ? JSON.parse(text) : {});
+    const { status, data, location, raw } = await handle(req, text ? JSON.parse(text) : {});
     res.writeHead(status, location ? { Location: location } : { "Content-Type": "application/json" });
-    res.end(status === 204 ? "" : JSON.stringify(data));
+    res.end(status === 204 ? "" : raw ?? JSON.stringify(data));
   });
 
   return {

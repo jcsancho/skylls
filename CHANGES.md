@@ -3,6 +3,20 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.8.3 — 2026-10-19
+
+- **Fix: the dashboard failing when GitHub times out (504)** reading many
+  items: it reads 20 items per query instead of 40, retries a failed query
+  once and splits a batch that still times out in halves (same as the CLI
+  in 1.9.1).
+
+## 1.9.1 — 2026-10-19
+
+- **Fix: `sync` (and every command reading the catalog) failing with
+  `gh: HTTP 504`:** reading 40 items per GitHub query took GitHub over its time
+  limit with large instruction files. It now reads 20 at a time, retries a
+  failed query once and splits a batch that still times out in halves.
+
 ## 1.9.0 — 2026-10-15
 
 - **Sharing an agent or swarm asks about pull requests:** `share <name> @user`

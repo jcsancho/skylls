@@ -28,15 +28,27 @@ export async function gh(token, path, { method = "GET", body } = {}) {
   });
   if (res.status === 204) return null;
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    if (res.ok) throw new GitHubError("GitHub sent an incomplete answer", 502);
+  }
   if (!res.ok) throw new GitHubError(data?.message || `GitHub error ${res.status}`, res.status);
   return data;
 }
 
 export async function graphql(token, query, variables = {}) {
-  const data = await gh(token, "/graphql", { method: "POST", body: { query, variables } });
-  if (data?.errors?.length) throw new GitHubError(data.errors[0].message, 502);
-  return data.data;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const data = await gh(token, "/graphql", { method: "POST", body: { query, variables } });
+      if (data?.errors?.length) throw new GitHubError(data.errors[0].message, 502);
+      return data.data;
+    } catch (err) {
+      // GitHub answers 502/504 when a query takes too long: try once more
+      if (attempt > 0 || !(err instanceof GitHubError) || err.status < 500) throw err;
+    }
+  }
 }
 
 /** 'owner/skylls-agent-lead-generator' or 'org/agent-lead-generator' → {kind, name}; null for other repos. */
@@ -132,6 +144,20 @@ function toItem(node) {
   };
 }
 
+/** The ITEM_FIELDS nodes of these repos; a batch GitHub can't answer in time is split in halves. */
+async function readItems(token, chunk) {
+  const aliases = chunk
+    .map((r, j) => `r${j}: repository(owner: ${JSON.stringify(r.split("/")[0])}, name: ${JSON.stringify(r.split("/")[1])}) { ${ITEM_FIELDS} }`)
+    .join(" ");
+  try {
+    return Object.values(await graphql(token, `query { ${aliases} }`));
+  } catch (err) {
+    if (chunk.length === 1 || !(err instanceof GitHubError) || err.status < 500) throw err;
+    const half = Math.floor(chunk.length / 2);
+    return [...(await readItems(token, chunk.slice(0, half))), ...(await readItems(token, chunk.slice(half)))];
+  }
+}
+
 /** Every skylls item the user can see: their own (admin) and what friends shared with them. */
 export async function catalog(token) {
   const repos = [];
@@ -146,13 +172,9 @@ export async function catalog(token) {
   } while (cursor);
   const wanted = repos.filter((r) => itemOf(r));
   const items = [];
-  for (let i = 0; i < wanted.length; i += 40) {
-    const chunk = wanted.slice(i, i + 40);
-    const aliases = chunk
-      .map((r, j) => `r${j}: repository(owner: ${JSON.stringify(r.split("/")[0])}, name: ${JSON.stringify(r.split("/")[1])}) { ${ITEM_FIELDS} }`)
-      .join(" ");
-    const data = await graphql(token, `query { ${aliases} }`);
-    for (const node of Object.values(data)) {
+  for (let i = 0; i < wanted.length; i += 20) { // 40 big items can take GitHub over its 10 s limit
+    const data = await readItems(token, wanted.slice(i, i + 20));
+    for (const node of data) {
       const item = node && toItem(node);
       if (item) items.push(item);
     }

@@ -125,6 +125,17 @@ test("alice sees her own items (account + organization), not other repos", async
   assert.equal(data.items.find((i) => i.name === "tax").ownerIsOrg, true);
 });
 
+test("a catalog query GitHub times out on (504) is split until it answers", async () => {
+  gh.state.maxAliases = 1;
+  try {
+    const { status, data } = await call("/api/items", { user: "alice" });
+    assert.equal(status, 200);
+    assert.equal(data.items.filter((i) => i.mine).length, 3);
+  } finally {
+    gh.state.maxAliases = Infinity;
+  }
+});
+
 test("bob: pending invite, shared items, accepting", async () => {
   let { data } = await call("/api/items", { user: "bob" });
   assert.deepEqual(data.invites.map((i) => [i.id, i.name, i.from]), [[99, "pdf", "alice"]]);

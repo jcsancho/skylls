@@ -291,12 +291,29 @@ ITEM_FIELDS = """name owner { login } isPrivate pushedAt url
 _catalog: Dict[str, List[dict]] = {}
 
 
-def graphql(query: str, **variables: str) -> dict:
+def graphql(query: str, fail: bool = True, **variables: str) -> Optional[dict]:
+    """Run a GraphQL query, retrying once (GitHub answers 502/504 when a query takes too long).
+    fail=False returns None instead of stopping."""
     args = ["graphql", "-f", f"query={query}"] + [f"-f{k}={v}" for k, v in variables.items()]
-    res = core.gh_api(*args)
-    if res.returncode != 0:
+    for _ in range(2):
+        res = core.gh_api(*args)
+        if res.returncode == 0:
+            return gh_json(res)["data"]
+    if fail:
         die(f"GitHub query failed: {res.stderr.strip()}")
-    return gh_json(res)["data"]
+    return None
+
+
+def read_items(chunk: List[str]) -> dict:
+    """The ITEM_FIELDS of these repos; a batch GitHub can't answer in time is split in halves."""
+    aliases = " ".join(f'r{i}: repository(owner: "{r.split("/")[0]}", name: "{r.split("/")[1]}") '
+                       f'{{ {ITEM_FIELDS} }}' for i, r in enumerate(chunk))
+    data = graphql(f"query {{ {aliases} }}", fail=len(chunk) == 1)
+    if data is not None:
+        return data
+    half = len(chunk) // 2
+    return {**{f"a{k}": v for k, v in read_items(chunk[:half]).items()},
+            **{f"b{k}": v for k, v in read_items(chunk[half:]).items()}}
 
 
 def accept_invites(owners: set) -> Tuple[int, Dict[str, List[dict]], set]:
@@ -351,12 +368,10 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
         for who in ([] if quiet else unknown):  # shared earlier (already accepted) by someone not a source
             info(f"{who} may have shared skylls items with you: skylls source add {who}")
         records_ = []
-        for start in range(0, len(wanted), 40):
-            chunk = wanted[start:start + 40]
+        for start in range(0, len(wanted), 20):  # 40 big items can take GitHub over its 10 s limit
+            chunk = wanted[start:start + 20]
             core.progress(start, len(wanted), f"GitHub: reading items {start + 1}-{start + len(chunk)}")
-            aliases = " ".join(f'r{i}: repository(owner: "{r.split("/")[0]}", name: "{r.split("/")[1]}") '
-                               f'{{ {ITEM_FIELDS} }}' for i, r in enumerate(chunk))
-            data = graphql(f"query {{ {aliases} }}")
+            data = read_items(chunk)
             records_ += [rec for node in data.values() if node and (rec := to_record(cfg, node))]
         core.progress_clear()
         _catalog["all"] = sorted(records_, key=lambda r: (r["kind"], r["name"].lower(), r["owner"].lower()))
