@@ -109,7 +109,8 @@ skylls pull --update                # install newer versions
 skylls sync -m "Small fixes"        # publish every published item you changed (skills, agents,
                                     # swarms; each one scanned), then install the newer versions
                                     # of skills, agents and swarms friends shared with you
-                                    # (no -m: never asks; the log lists the changed files)
+                                    # (no -m: never asks; the log lists the changed files;
+                                    # --keep-memory: keep your agents'/swarms' memory as it is)
 skylls remove pdf                   # remove your local copy (never touches GitHub)
 ```
 
@@ -202,8 +203,11 @@ it. Other skills in there are published as copies.
 - **Where it goes:** your agents or swarms folder (`~/agents/btc/`).
 - **Paths:** absolute paths from their machine are rewritten to yours, and
   missing ones are listed.
-- **Updates:** running `add` again updates the definition. Your runtime data
-  stays, and so does your memory unless you pass `--update-memory`.
+- **Updates:** running `add` again (or `sync`) updates the definition and
+  refreshes your copy of its memory to the owner's latest (notes only you
+  added stay; your runtime data stays). Pass `--keep-memory` to keep your
+  memory exactly as it is: the owner's latest goes next to it in its own
+  folder (`alice-wiki/` beside `wiki/`, `~/Obsidian/alice-btc-wiki`).
 - **Where it came from** is recorded in its `CHANGELOG.md`.
 
 ## Friends and sharing
@@ -376,7 +380,7 @@ Add `--dry-run` to any command to see what it would do without changing anything
 | `log <name> [--from O]` | Who made it, versions, what changed |
 | `installed [-g] [-a A]` | Installed skills and newer versions |
 | `pull [--update]` | Check for (and install) newer versions |
-| `sync [-m msg] [--skip-scan] [-y]` | Publish your changed items, then install friends' newer versions |
+| `sync [-m msg] [--skip-scan] [-y] [--keep-memory]` | Publish your changed items, then install friends' newer versions |
 | `remove <name> [-g] [-a A]` | Remove a local skill copy |
 | `push <name\|path> [-m msg] [--minor\|--major] [--about text] [--folder F] [--skip-scan]` | Publish a new version to its private repo |
 | `share <name> @user… \| --all @user` | Let friends install it (no users: who has access) |
@@ -391,7 +395,7 @@ Add `--dry-run` to any command to see what it would do without changing anything
 | `suggestions [name]` / `review <name>#<n>` / `accept <name>#<n>` / `decline <name>#<n>` | Your open suggestions and pull requests, and answering them |
 | `agents\|swarms propose <name> [--from O] -m "…"` | Send your changes to a friend's agent/swarm as a pull request |
 | `agents\|swarms allow-prs <name> \| --all [--off]` | Let the people you share with send pull requests |
-| `agents …` / `swarms …` | The same commands for agents and swarms, plus `add --as N --update-memory`, `push -y` (memory notes without asking) and `remove [--memory] [-y]` |
+| `agents …` / `swarms …` | The same commands for agents and swarms, plus `add --as N --keep-memory`, `push -y` (memory notes without asking) and `remove [--memory] [-y]` |
 | `agent-skill [-g] [-a A]` | (Re)install the skylls skill for your agents |
 | `search <query>` | Public skills on skills.sh |
 | `version` / `--version` | The skylls version |

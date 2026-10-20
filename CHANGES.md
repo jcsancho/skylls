@@ -3,6 +3,22 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.8.4 — 2026-10-20
+
+- Docs, `llms.txt` and `skill.md`: updates refresh a friend's copy of an
+  agent's/swarm's memory; `--keep-memory` (CLI 1.10.0) keeps it.
+
+## 1.10.0 — 2026-10-20
+
+- **Updates now refresh your copy of an agent's/swarm's memory** to the
+  owner's latest (`add` again and `sync`): a friend's wiki no longer stays at
+  the version they first installed. Notes only you added stay.
+- **New `--keep-memory`** (`agents|swarms add`, `sync`): keeps your memory
+  exactly as it is and puts the owner's latest next to it in its own folder,
+  e.g. `alice-wiki/` beside `wiki/` (or `~/Obsidian/alice-btc-wiki` for
+  memory kept outside the item). That folder mirrors the owner's version on
+  every update. `--update-memory` is still accepted (it is the default now).
+
 ## webapp 1.8.3 — 2026-10-19
 
 - **Fix: the dashboard failing when GitHub times out (504)** reading many

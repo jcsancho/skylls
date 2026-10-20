@@ -688,7 +688,8 @@ Every item you publish gets its own private GitHub repo; you share item by item.
   {YELLOW}--about "..."{NC}       Write the plain summary yourself instead of Claude (push)
   {YELLOW}--folder F{NC}          Put it in folder F (push); -f F filters list/find
   {YELLOW}--skip-scan{NC}         Publish without the gitleaks secret/private-info scan
-  {YELLOW}--update-memory{NC}     Agents/swarms add: also refresh your copy of its memory
+  {YELLOW}--keep-memory{NC}       Agents/swarms add, sync: keep your copy of the memory (updates refresh it
+                      by default); the owner's latest goes next to it, e.g. alice-btc-wiki/
   {YELLOW}-y, --yes{NC}           Agents/swarms push, sync: publish new memory notes without asking
   {YELLOW}--json{NC}              For agents: compact JSON lines (list/find/log/installed/suggestions)
   {YELLOW}--limit N{NC}           find: at most N results (default 10 with --json)
@@ -747,6 +748,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("-m", "--message", help="What changed (logged with each new version; asked if omitted).")
     sp.add_argument("--skip-scan", action="store_true", help="Publish without the secret scan.")
     sp.add_argument("-y", "--yes", action="store_true", help="Publish new memory notes without asking.")
+    sp.add_argument("--keep-memory", action="store_true",
+                    help="Keep your copies of agents'/swarms' memory; the owners' latest go next to them.")
     sp = sub.add_parser("revoke", help="Take back everything you shared with these users.")
     sp.add_argument("users", nargs="+", metavar="@user")
     sp.add_argument("-y", "--yes", action="store_true", help="Don't ask first.")
@@ -812,7 +815,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.cmd == "source":
         kinds.cmd_source(cfg, args.action, args.owner, args.dry_run)
     elif args.cmd == "sync":
-        kinds.cmd_sync(cfg, args.message, args.skip_scan, args.dry_run, args.yes)
+        kinds.cmd_sync(cfg, args.message, args.skip_scan, args.dry_run, args.yes, args.keep_memory)
     elif args.cmd == "revoke":
         kinds.cmd_revoke(cfg, args.users, args.yes, args.dry_run)
     elif args.cmd == "people":

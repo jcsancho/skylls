@@ -28,6 +28,7 @@ Fields: name, owner, folder, version, summary, updated, installed, published (fa
     skylls add <name>                                # skill for this project only
     skylls add <name> --from <owner> -g -a all       # when several owners have that name
     skylls agents add <name> --from <owner>          # agent → ~/agents/<name>, with its memory
+    (updates and sync refresh its memory to the owner's; --keep-memory keeps the user's, theirs goes to <owner>-<wiki>/)
     skylls swarms add <name> --from <owner>          # swarm → ~/swarms/<name>
     skylls pull --update                             # install newer versions of installed skills
 Read an installed SKILL.md only when you are about to use it.

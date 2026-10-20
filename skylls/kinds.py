@@ -23,6 +23,7 @@ scripts, swarm config), never runtime state, plus the item's Obsidian memory
 snapshotted into .skylls-memory/).
 """
 
+import argparse
 import fnmatch
 import hashlib
 import io
@@ -724,21 +725,41 @@ def snapshot_root(rel: str) -> str:
     return "/".join(parts[:4 if len(parts) > 4 and parts[2] == "AGENTS" else 2])
 
 
-def install_memory(src: Path, rels: List[str], update: bool) -> List[str]:
-    """Copy a downloaded memory snapshot to the same place under your home; returns the folders written."""
+def owner_copy_name(owner: str, name: str) -> str:
+    """Folder for the owner's latest memory next to yours (--keep-memory); always named like a memory folder."""
+    copy = f"{owner}-{name}"
+    return copy if is_memory_name(copy) else copy + "-wiki"
+
+
+def drop_stale(folder: Path, keep: set, base: Path) -> None:
+    """Delete the files in an owner's copy of a memory that their latest version no longer has
+    (Obsidian's per-user state, which is never shared, stays)."""
+    for path in [p for p in folder.rglob("*") if p.is_file() and not p.is_symlink()] if folder.is_dir() else []:
+        if path.relative_to(base).as_posix() not in keep and memory_file_ok(path.relative_to(folder).as_posix(), 0):
+            path.unlink()
+
+
+def install_memory(src: Path, rels: List[str], keep_owner: Optional[str] = None) -> List[str]:
+    """Copy a downloaded memory snapshot to the same place under your home; returns the folders written.
+    With keep_owner (--keep-memory) a folder you already have stays as it is and theirs goes next to it."""
     by_root: Dict[str, List[str]] = {}
     for rel in rels:
         by_root.setdefault(snapshot_root(rel), []).append(rel[len(MEMORY_DIR) + 1:])
     done = []
     for root, files in by_root.items():
-        if (Path.home() / root).exists() and not update:
-            info(f"Kept your memory at ~/{root} (refresh it from the source with --update-memory)")
-            continue
-        for inner in files:
-            dst = Path.home() / inner
+        target = root
+        if keep_owner and (Path.home() / root).exists():
+            parent, _, leaf = root.rpartition("/")
+            target = f"{parent}/{owner_copy_name(keep_owner, leaf)}"
+            info(f"Kept your memory at ~/{root}; {keep_owner}'s latest goes to ~/{target}")
+        places = {inner: target + inner[len(root):] for inner in files}
+        if target != root:
+            drop_stale(Path.home() / target, set(places.values()), Path.home())
+        for inner, place in places.items():
+            dst = Path.home() / place
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src / MEMORY_DIR / inner, dst)
-        done.append(root)
+        done.append(target)
     return done
 
 
@@ -1145,8 +1166,9 @@ def cmd_add_skill(cfg: dict, spec: str, owner: Optional[str], agent: Optional[st
 
 
 def cmd_add_item(cfg: dict, kind: str, spec: str, owner: Optional[str], as_name: Optional[str], force: bool,
-                 update_memory: bool, dry_run: bool) -> None:
-    """Download an agent/swarm into your folder (updates keep your runtime data and memory)."""
+                 keep_memory: bool, dry_run: bool) -> None:
+    """Download an agent/swarm into your folder. Updates keep your runtime data and refresh its memory
+    to the owner's; with keep_memory your memory stays and theirs goes next to it."""
     name, _, version = spec.partition("@")
     r = resolve(cfg, kind, name, owner)
     dest = local_item(cfg, kind, check_name(as_name or r["name"]))
@@ -1159,7 +1181,8 @@ def cmd_add_item(cfg: dict, kind: str, spec: str, owner: Optional[str], as_name:
         outside = [f for f in fetched if f.startswith(MEMORY_DIR + "/")]
         if dry_run:
             info(f"Would install {len(rels)} files of {r['name']} v{got} into {dest}"
-                 f"{f' and {len(outside)} memory files under ~/' if outside else ''}")
+                 f"{f' and {len(outside)} memory files under ~/' if outside else ''}"
+                 f"{', keeping your memory (theirs gets its own folder)' if keep_memory else ''}")
             return
         existed = dest.exists()
         if existed:
@@ -1170,23 +1193,29 @@ def cmd_add_item(cfg: dict, kind: str, spec: str, owner: Optional[str], as_name:
                           "(y/N): ").strip().lower() != "y":
                 die("Nothing was changed.")
         bundled = read_manifest(src)
-        inner = memory_dirs_in(rels)
-        keep_mine = [d for d in inner if (dest / d).is_dir()] if not update_memory else []
-        rels = [f for f in rels if f.split("/", 1)[0] not in keep_mine]
-        for d in keep_mine:
-            info(f"Kept your memory in {d}/ (refresh it from the source with --update-memory)")
+        theirs = {d: owner_copy_name(r["owner"], d) for d in memory_dirs_in(rels) if (dest / d).is_dir()} \
+            if keep_memory else {}
+        for d, copy in theirs.items():
+            info(f"Kept your memory in {d}/; {r['owner']}'s latest goes to {copy}/")
+        place = {}  # downloaded file → where it goes in your copy
+        for f in rels:
+            top, _, rest = f.partition("/")
+            place[f] = f"{theirs[top]}/{rest}" if top in theirs else f
+        wanted = set(place.values())
         if existed:
             mine_memory = local_memory_dirs(dest)
             for rel in local_files(kind, dest):  # drop definition files the new version no longer has
-                if rel not in rels and rel != core.CHANGELOG and not rel.startswith(MEMORY_DIR + "/") \
+                if rel not in wanted and rel != core.CHANGELOG and not rel.startswith(MEMORY_DIR + "/") \
                         and rel.split("/", 1)[0] not in mine_memory \
                         and not any(rel.startswith(d + "/") for d in bundled):
                     (dest / rel).unlink()
-        for rel in rels:
+            for copy in theirs.values():  # the owner's copy mirrors their latest version
+                drop_stale(dest / copy, wanted, dest)
+        for f, rel in place.items():
             (dest / rel).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src / rel, dest / rel)
-        restored = install_memory(src, outside, update_memory)
-        rewrite_paths(dest, rels, log["origin"], log["home"])
+            shutil.copy2(src / f, dest / rel)
+        restored = install_memory(src, outside, r["owner"] if keep_memory else None)
+        rewrite_paths(dest, sorted(wanted), log["origin"], log["home"])
         for folder, repo in sorted(bundled.items()):
             install_bundled(cfg, dest, folder, repo)
         log["source"] = f"{r['repo']} v{got}"
@@ -1322,7 +1351,8 @@ def installed_version(path: Path) -> Optional[str]:
     return log["entries"][0]["version"] if log["entries"] else None
 
 
-def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, yes: bool = False) -> None:
+def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, yes: bool = False,
+             keep_memory: bool = False) -> None:
     """Publish what changed in your published items, then install newer versions of what friends shared."""
     published, updated, failed, unchanged_ = [], [], [], 0
     section("Reading your items and your friends' from GitHub")
@@ -1360,7 +1390,7 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
             if r and newer({"version": installed_version(item)}, r):
                 info(f"{one(kind)} {item.name}: v{installed_version(item) or '-'} → v{r['version']}")
                 try:
-                    cmd_add_item(cfg, kind, r["name"], r["owner"], item.name, True, False, dry_run)
+                    cmd_add_item(cfg, kind, r["name"], r["owner"], item.name, True, keep_memory, dry_run)
                 except SystemExit:
                     failed.append(f"{one(kind)} {item.name}")
                     continue
@@ -2051,7 +2081,9 @@ def add_item_parsers(sub, kind: str, scoped) -> None:
         scoped(sp)
     else:
         sp.add_argument("--as", dest="as_name", help="Install under another folder name.")
-        sp.add_argument("--update-memory", action="store_true", help="Also overwrite your copy of its memory.")
+        sp.add_argument("--keep-memory", action="store_true",
+                        help="Keep your copy of its memory; the owner's latest goes next to it in its own folder.")
+        sp.add_argument("--update-memory", action="store_true", help=argparse.SUPPRESS)  # the default since 1.10
     for cmd in ("push",) + (("save",) if kind == "skills" else ()):
         sp = sub.add_parser(cmd, help=f"Publish a new version of your {o} to its private repo.")
         sp.add_argument("name", help=f"{o} name or folder")
@@ -2134,7 +2166,7 @@ def run(cfg: dict, kind: str, cmd: str, args) -> None:
         if kind == "skills":
             cmd_add_skill(cfg, args.name, args.owner, args.agent, bool(args.is_global), args.yes, args.dry_run)
         else:
-            cmd_add_item(cfg, kind, args.name, args.owner, args.as_name, args.yes, args.update_memory, args.dry_run)
+            cmd_add_item(cfg, kind, args.name, args.owner, args.as_name, args.yes, args.keep_memory, args.dry_run)
     elif cmd in ("push", "save"):
         cmd_push(cfg, kind, args)
     elif cmd == "log":

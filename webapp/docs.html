@@ -392,7 +392,7 @@ skylls pull --update           <span class="cm"># install them</span>
 skylls sync -m "Small fixes"   <span class="cm"># publish your changed items, then install friends' new versions</span>
 skylls add pdf@1.0.0           <span class="cm"># go back to an older version</span></code></pre>
         <p>Every version stays installable, so you can always go back.</p>
-        <p><code>skylls sync</code> does both directions in one go: it publishes a new version of every skill, agent and swarm you already published and changed since (each one is scanned for secrets; if one is refused, the others still go), then installs the newer versions of everything friends shared with you. Your copy of an agent's memory is kept. Add <code>--dry-run</code> to see what it would do.</p>
+        <p><code>skylls sync</code> does both directions in one go: it publishes a new version of every skill, agent and swarm you already published and changed since (each one is scanned for secrets; if one is refused, the others still go), then installs the newer versions of everything friends shared with you. Your copy of an agent's memory is refreshed to the owner's latest (<code>--keep-memory</code> keeps yours and puts theirs next to it). Add <code>--dry-run</code> to see what it would do.</p>
       </section>
 
       <!-- Agents and swarms -->
@@ -422,7 +422,7 @@ skylls swarms push marketing-team               <span class="cm"># ~/swarms/mark
         <ul>
           <li>It goes into your agents or swarms folder (for example <code>~/agents/lead-generator/</code>).</li>
           <li>Absolute paths from their machine are rewritten to yours, and missing ones are listed.</li>
-          <li>Running <code>add</code> again updates the definition. Your runtime data stays, and so does your memory unless you pass <code>--update-memory</code>.</li>
+          <li>Running <code>add</code> again (or <code>sync</code>) updates the definition and refreshes your copy of its memory to the owner's latest; notes only you added stay, and so does your runtime data. Pass <code>--keep-memory</code> to keep your memory exactly as it is: the owner's latest goes next to it in its own folder (<code>alice-wiki/</code> beside <code>wiki/</code>).</li>
           <li>Where it came from is recorded in its <code>CHANGELOG.md</code>.</li>
         </ul>
       </section>
@@ -601,7 +601,7 @@ skylls add anthropics/skills/pdf -g        <span class="cm"># install straight f
             <tr><td><code>log &lt;name&gt; [--from O]</code></td><td>Who made it, versions, what changed</td></tr>
             <tr><td><code>installed [-g] [-a A]</code></td><td>Installed skills and newer versions</td></tr>
             <tr><td><code>pull [--update]</code></td><td>Check for (and install) newer versions</td></tr>
-            <tr><td><code>sync [-m msg] [--skip-scan]</code></td><td>Publish your changed items, then install friends' newer versions</td></tr>
+            <tr><td><code>sync [-m msg] [--skip-scan] [--keep-memory]</code></td><td>Publish your changed items, then install friends' newer versions</td></tr>
             <tr><td><code>remove &lt;name&gt; [-g] [-a A]</code></td><td>Remove a local skill copy</td></tr>
             <tr><td><code>push &lt;name|path&gt; [-m msg] [--minor|--major] [--about text] [--folder F] [--skip-scan]</code></td><td>Publish a new version to its private repo</td></tr>
             <tr><td><code>share &lt;name&gt; @user… | --all @user</code></td><td>Let friends install it (no users: who has access)</td></tr>
@@ -616,7 +616,7 @@ skylls add anthropics/skills/pdf -g        <span class="cm"># install straight f
             <tr><td><code>suggestions [name]</code> / <code>review &lt;name&gt;#&lt;n&gt;</code> / <code>accept &lt;name&gt;#&lt;n&gt;</code> / <code>decline &lt;name&gt;#&lt;n&gt;</code></td><td>Your open suggestions and pull requests, and answering them</td></tr>
             <tr><td><code>agents|swarms propose &lt;name&gt; [--from O] -m "…"</code></td><td>Send your changes to a friend's agent/swarm as a <a href="#pull-requests">pull request</a></td></tr>
             <tr><td><code>agents|swarms allow-prs &lt;name&gt; | --all [--off]</code></td><td>Let the people you share with send pull requests</td></tr>
-            <tr><td><code>agents …</code> / <code>swarms …</code></td><td>The same commands for agents and swarms, plus <code>add --as N --update-memory</code> and <code>remove [--memory] [-y]</code></td></tr>
+            <tr><td><code>agents …</code> / <code>swarms …</code></td><td>The same commands for agents and swarms, plus <code>add --as N --keep-memory</code> and <code>remove [--memory] [-y]</code></td></tr>
             <tr><td><code>agent-skill [-g] [-a A]</code></td><td>(Re)install the skylls skill for your agents</td></tr>
             <tr><td><code>search &lt;query&gt;</code></td><td>Public skills on skills.sh</td></tr>
             <tr><td><code>version</code> / <code>--version</code></td><td>The skylls version</td></tr>

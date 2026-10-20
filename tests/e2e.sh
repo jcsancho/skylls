@@ -77,6 +77,13 @@ echo "Syncs." >> $HOME/.claude/skills/pdf/SKILL.md; echo "more" >> $HOME/agents/
 s sync -m "Synced" --skip-scan | grep -E "Published|up to date|Sync done"
 user bob; s sync | grep -E "→|Updated from|Published:"; sj installed | grep pdf
 grep -m1 "^## " $HOME/agents/btc/CHANGELOG.md; s sync | grep "Updated from"
+echo "--- updates refresh bob's copy of the memory; --keep-memory keeps his and puts alice's next to it"; user alice
+echo "page v2" > $HOME/agents/btc/wiki/index.md; s agents push btc -m "wiki v2" --skip-scan -y | grep Published
+user bob; echo "bob's" > $HOME/agents/btc/wiki/index.md; echo mine > $HOME/agents/btc/wiki/bob.md
+s sync | grep -E "Kept|Updated from"; cat $HOME/agents/btc/wiki/index.md $HOME/agents/btc/wiki/bob.md
+user alice; echo "page v3" > $HOME/agents/btc/wiki/index.md; s agents push btc -m "wiki v3" --skip-scan -y | grep Published
+user bob; echo "bob's" > $HOME/agents/btc/wiki/index.md; s sync --keep-memory | grep -E "Kept|Updated from"
+cat $HOME/agents/btc/wiki/index.md $HOME/agents/btc/alice-wiki/index.md
 echo "--- sync without -m never asks: the log lists the changed files"; user alice
 echo "Quiet." >> $HOME/.claude/skills/pdf/SKILL.md
 s sync --skip-scan | grep -c "not found" || true; grep -m1 -A2 "^## " $HOME/.claude/skills/pdf/CHANGELOG.md | tail -1

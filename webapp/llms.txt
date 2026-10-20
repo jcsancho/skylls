@@ -91,7 +91,7 @@ Obsidian memory; a swarm is a team of agents. Same commands under `skylls agents
     skylls agents push lead-generator -m "what changed"  # ~/agents/lead-generator → <org>/agent-lead-generator
     skylls agents add lead-generator --from alice        # → ~/agents/lead-generator, with its memory
     skylls agents add lead-generator --as leads2         # under another name
-    skylls agents add lead-generator --update-memory     # also replace your copy of its memory
+    skylls agents add lead-generator --keep-memory       # update, keep your memory (theirs → alice-wiki/)
     skylls swarms add marketing-team --from alice        # → ~/swarms/marketing-team
     skylls agents list --json                            # "published":false = not published yet
 
@@ -155,7 +155,7 @@ Add `--dry-run` to any command that changes files or GitHub to preview it.
     log <name> [--from O]                   who made it, versions, what changed
     installed [-g] [-a A]                   installed skills and newer versions
     pull [--update]                         check for (and install) newer versions
-    sync [-m msg] [--skip-scan]             publish your changed items + install friends' new versions
+    sync [-m msg] [--skip-scan] [--keep-memory]  publish your changed items + install friends' new versions
     remove <name> [-g] [-a A]               remove a local copy
     push <name|path> [-m msg] [--minor|--major] [--about text] [--folder F] [--skip-scan]
     share <name> @user… | --all @user       let friends install it (no users: who has access)
@@ -170,7 +170,7 @@ Add `--dry-run` to any command that changes files or GitHub to preview it.
     suggestions [name] / review <name>#<n> / accept <name>#<n> [--force] / decline <name>#<n>
     agents|swarms propose <name> [--from O] -m "…" [--skip F]   your changes to a friend's copy as a pull request
     agents|swarms allow-prs <name> | --all [--off]           let the people you share with send pull requests
-    agents … / swarms …                     the same for agents and swarms (+ add --as N --update-memory, remove [--memory] [-y])
+    agents … / swarms …                     the same for agents and swarms (+ add --as N --keep-memory, remove [--memory] [-y])
     agent-skill [-g] [-a A]                 (re)install the skylls skill
     search <query>                          public skills on skills.sh
     update [--check]                        update skylls itself
