@@ -275,7 +275,7 @@ def ensure_private(repo: str) -> None:
 
 
 # ── Catalog: what you and your friends have ────────────────────────────────
-LIST_QUERY = """query($endCursor: String) { viewer { repositories(first: 100, after: $endCursor,
+LIST_QUERY = """query($endCursor: String) { viewer { repositories(first: PAGE, after: $endCursor,
   affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER],
   ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]) {
   nodes { name owner { login } isPrivate defaultBranchRef { target { oid } }
@@ -293,12 +293,14 @@ ITEM_FIELDS = """name owner { login } isPrivate pushedAt url
 _catalog: Dict[str, List[dict]] = {}
 
 
-def graphql(query: str, fail: bool = True, **variables: str) -> Optional[dict]:
-    """Run a GraphQL query, retrying once (GitHub answers 502/504 when a query takes too long).
-    fail=False returns None instead of stopping."""
+def graphql(query: str, fail: bool = True, tries: int = 3, **variables: str) -> Optional[dict]:
+    """Run a GraphQL query, retrying (GitHub answers 502/504 when a query takes too long, and a request
+    can hang: each try gets 60 s). fail=False returns None instead of stopping."""
     args = ["graphql", "-f", f"query={query}"] + [f"-f{k}={v}" for k, v in variables.items()]
-    for _ in range(2):
-        res = core.gh_api(*args)
+    for attempt in range(tries):
+        if attempt:
+            time.sleep(2 * attempt)
+        res = core.gh_api(*args, timeout=60)
         if res.returncode == 0:
             return gh_json(res)["data"]
     if fail:
@@ -310,7 +312,7 @@ def read_items(chunk: List[str]) -> dict:
     """The ITEM_FIELDS of these repos; a batch GitHub can't answer in time is split in halves."""
     aliases = " ".join(f'r{i}: repository(owner: "{r.split("/")[0]}", name: "{r.split("/")[1]}") '
                        f'{{ {ITEM_FIELDS} }}' for i, r in enumerate(chunk))
-    data = graphql(f"query {{ {aliases} }}", fail=len(chunk) == 1)
+    data = graphql(f"query {{ {aliases} }}", fail=len(chunk) == 1, tries=3 if len(chunk) == 1 else 2)
     if data is not None:
         return data
     half = len(chunk) // 2
@@ -360,10 +362,15 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
         _catalog["waiting"] = waiting
         for who, n in ((w, len(items)) for w, items in waiting.items() if not quiet):
             info(f"@{who} shared {n} item{'s' if n != 1 else ''} with you: skylls source add {who}")
-        repos, nodes, cursor = [], {}, ""
+        repos, nodes, cursor, size = [], {}, "", 100
         while True:
             core.progress(0, 1, f"GitHub: listing your repos ({len(repos)} so far)")
-            page = graphql(LIST_QUERY, **({"endCursor": cursor} if cursor else {}))["viewer"]["repositories"]
+            data = graphql(LIST_QUERY.replace("PAGE", str(size)), fail=size <= 25, tries=2 if size > 25 else 3,
+                           **({"endCursor": cursor} if cursor else {}))
+            if data is None:  # GitHub couldn't list that many in time: smaller pages
+                size //= 2
+                continue
+            page = data["viewer"]["repositories"]
             repos += [f"{n['owner']['login']}/{n['name']}" for n in page["nodes"]]
             nodes.update({f"{n['owner']['login']}/{n['name']}": n for n in page["nodes"]})
             if not page["pageInfo"]["hasNextPage"]:

@@ -244,12 +244,16 @@ def git(*args: str, cwd: Optional[Path] = None, check: bool = True) -> subproces
     return res
 
 
-def gh(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["gh", *args], capture_output=True, text=True)
+def gh(*args: str, timeout: Optional[float] = None) -> subprocess.CompletedProcess:
+    """Run gh; a call still running after timeout seconds is stopped and fails (returncode 124)."""
+    try:
+        return subprocess.run(["gh", *args], capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(["gh", *args], 124, "", f"gh: no answer from GitHub in {timeout:.0f} s")
 
 
-def gh_api(*args: str) -> subprocess.CompletedProcess:
-    return gh("api", *args)
+def gh_api(*args: str, timeout: Optional[float] = None) -> subprocess.CompletedProcess:
+    return gh("api", *args, timeout=timeout)
 
 
 def github_users(users: List[str]) -> List[str]:

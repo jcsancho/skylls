@@ -3,6 +3,13 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.12.3 — 2026-10-21
+
+- **GitHub hiccups no longer stop or hang a run**: a GitHub query that gets no
+  answer in 60 s is stopped and retried, a failed one is retried up to three
+  times with a short wait in between, and when GitHub can't list 100 of your repos
+  in time (HTTP 502) the list is read in smaller pages (50, then 25).
+
 ## 1.12.2 — 2026-10-21
 
 - **`sync` is much faster**: it lists your repos on GitHub with their latest
