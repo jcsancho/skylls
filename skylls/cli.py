@@ -709,7 +709,7 @@ Every item you publish gets its own private GitHub repo; you share item by item.
   {YELLOW}--skip-scan{NC}         Publish without the gitleaks secret/private-info scan
   {YELLOW}--keep-memory{NC}       Agents/swarms add, sync: keep your copy of the memory (updates refresh it
                       by default); the owner's latest goes next to it, e.g. alice-btc-wiki/
-  {YELLOW}-y, --yes{NC}           Agents/swarms push, sync: publish new memory notes without asking
+  {YELLOW}-y, --yes{NC}           Agents/swarms push: publish new memory notes without asking (sync never asks)
   {YELLOW}--json{NC}              For agents: compact JSON lines (list/find/log/installed/suggestions)
   {YELLOW}--limit N{NC}           find: at most N results (default 10 with --json)
 

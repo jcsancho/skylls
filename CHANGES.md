@@ -3,6 +3,13 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.14.0 — 2026-10-21
+
+- **`sync` no longer asks about memory notes**: it publishes your changed
+  agents and swarms with their new or changed memory notes and says how many
+  went out, instead of listing them and waiting for a yes. `skylls view` still
+  lists them beforehand, and `push` still lists them and asks (`-y` to skip).
+
 ## 1.13.0 — 2026-10-21
 
 - **`sync` no longer lists all your repos on GitHub**: skylls remembers your

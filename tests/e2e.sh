@@ -76,7 +76,8 @@ echo "--- sync: alice publishes her changes, bob gets them"; user alice
 echo "Syncs." >> $HOME/.claude/skills/pdf/SKILL.md; echo "more" >> $HOME/agents/btc/CLAUDE.md
 echo "--- view lists what sync would do and changes nothing"
 s view | grep -E "^  •|^      [+~-] |Unchanged|Nothing was"; sj view | head -c 60; echo
-s sync -m "Synced" --skip-scan | grep -E "Published|up to date|Sync done"
+echo "new note" > $HOME/agents/btc/wiki/new.md  # sync counts memory notes, never asks
+s sync -m "Synced" --skip-scan | grep -E "Published|up to date|Sync done|Memory notes"
 user bob; s view | grep -E "^  •|Nothing:|Install one"
 s sync | grep -E "→|Updated from|Published:"; sj installed | grep pdf
 grep -m1 "^## " $HOME/agents/btc/CHANGELOG.md; s sync | grep "Updated from"

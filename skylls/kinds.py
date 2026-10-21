@@ -1096,7 +1096,7 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
              f"{', '.join(sorted({d.rsplit('/', 1)[-1] for d in bundled}))}")
 
     if kind != "skills":
-        review_memory(kind, src, repo, files, dry_run, yes)
+        review_memory(kind, src, repo, files, dry_run, yes or not ask)
 
     def place(rel: str, root: Path) -> None:
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -1187,7 +1187,8 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
 
 
 def review_memory(kind: str, src: Path, repo: str, files: List[str], dry_run: bool, yes: bool) -> None:
-    """List the memory notes this publish adds or changes; ask before sending them (unless -y or no terminal)."""
+    """List the memory notes this publish adds or changes; ask before sending them (unless -y or no terminal).
+    yes (also sync, which never asks): only count them."""
     memory = set(local_memory_dirs(src)) | {MEMORY_DIR}
     notes = [f for f in files if "/" in f and f.split("/", 1)[0] in memory]
     if not notes:
@@ -1196,6 +1197,9 @@ def review_memory(kind: str, src: Path, repo: str, files: List[str], dry_run: bo
     new = [f for f in notes if not path or not (path / f).is_file()
            or (path / f).read_bytes() != (src / f).read_bytes()]
     if not new:
+        return
+    if yes and not dry_run:
+        info(f"Memory notes going out: {len(new)} new or changed (skylls view lists them first).")
         return
     shown = ["~/" + f[len(MEMORY_DIR) + 1:] if f.startswith(MEMORY_DIR + "/") else f for f in new]
     warn(f"Memory notes friends will get ({len(new)} new or changed):\n    " + "\n    ".join(shown[:20])

@@ -197,9 +197,10 @@ it. Other skills in there are published as copies.
   is never published (client names, people, deals). Keep what friends may
   learn from (method, lessons, playbooks) in plain notes; `.skyllsignore`
   can also leave out whole paths.
-- **You see what goes out:** `push` and `sync` list the memory notes that
-  are new or changed since the last version and ask before publishing them
-  (`-y` publishes without asking; `--dry-run` only lists them).
+- **You see what goes out:** `push` lists the memory notes that are new or
+  changed since the last version and asks before publishing them (`-y`
+  publishes without asking; `--dry-run` only lists them). `sync` publishes them
+  without asking and says how many went out; `skylls view` lists them first.
 - **Memory elsewhere in `~/Obsidian`** still works:
   - Found from the instructions: a `<x>-wiki` vault they mention, or
     `<vault>/AGENTS/<name>/` for the item's own name.

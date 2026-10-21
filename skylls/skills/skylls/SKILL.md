@@ -51,7 +51,7 @@ Read an installed SKILL.md only when you are about to use it.
     skylls suggestions / review <name>#<n> / accept <name>#<n> / decline <name>#<n>   # owner: answer (accept merges + publishes)
 - Push scans for API keys and personal data and refuses if it finds any: remove them, never use --skip-scan on your own.
 - Agent/swarm memory notes go with them, except notes with `private: true` in their frontmatter: write private facts (clients, people, money) there.
-- Agents/swarms push and sync list new memory notes and ask; show the user that list, use -y only after they agree.
+- Agents/swarms push lists new memory notes and asks; show the user that list, use -y only after they agree. sync publishes them without asking: run view first when the user wants to check them.
 - Sharing access and removing things are the user's decisions; never do them unprompted.
 
 ## Rules
