@@ -377,6 +377,16 @@ def gitleaks_config() -> Optional[Path]:
     return None
 
 
+# Values in docs and drafts that only show what a key looks like: cut short with an
+# ellipsis ("sk-proj-abc…"), xxxx'd out, <your-key> or your_api_key.
+PLACEHOLDER = re.compile(r"…|\.\.\.|[xX*]{6,}|<[^>]*>|\byour[_-]?(api[_-]?)?(key|token|secret|password)", re.I)
+
+
+def is_placeholder(match: str) -> bool:
+    """True when a gitleaks match is an example value, not a real secret."""
+    return bool(PLACEHOLDER.search(match.replace("REDACTED", "")))
+
+
 def scan_secrets(folder: Path) -> None:
     """Abort unless gitleaks finds no API keys, passwords or private info in folder."""
     if not shutil.which("gitleaks"):
@@ -394,6 +404,10 @@ def scan_secrets(folder: Path) -> None:
         if result.returncode != 0 or not report.is_file():
             die(f"gitleaks failed: {(result.stderr or result.stdout).strip()}")
         findings = json.loads(report.read_text() or "[]")
+    examples = [f for f in findings if is_placeholder(f.get("Match", ""))]
+    findings = [f for f in findings if f not in examples]
+    if examples:
+        info(f"Ignored {len(examples)} example value(s) like \"sk-abc…\" (cut short or placeholders).")
     if not findings:
         ok("No secrets or private info found.")
         return

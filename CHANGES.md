@@ -3,6 +3,21 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.12.2 — 2026-10-21
+
+- **`sync` is much faster**: it lists your repos on GitHub with their latest
+  commit and reads an item from its clone on this computer when the clone
+  already has that commit. Your unchanged items and the ones not on this
+  computer cost no GitHub reads; only friends' new versions are read. Your
+  local changes are still published: an item that differs from GitHub's latest
+  commit (or whose clone is behind it) goes through publish as before.
+
+## 1.12.1 — 2026-10-21
+
+- **The secret scan ignores example values**: keys cut short with an ellipsis
+  (`apiKey: "sk-proj-abc…"`), xxxx'd out or written as `<your-key>` no longer
+  stop a publish (e.g. a tweet draft showing what not to do).
+
 ## 1.12.0 — 2026-10-20
 
 - **`sync --view` is now its own command, `skylls view`** (it doesn't sync).

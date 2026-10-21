@@ -278,7 +278,8 @@ def ensure_private(repo: str) -> None:
 LIST_QUERY = """query($endCursor: String) { viewer { repositories(first: 100, after: $endCursor,
   affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER],
   ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]) {
-  nodes { name owner { login } } pageInfo { hasNextPage endCursor } } } }"""
+  nodes { name owner { login } isPrivate defaultBranchRef { target { oid } }
+    repositoryTopics(first: 20) { nodes { topic { name } } } } pageInfo { hasNextPage endCursor } } } }"""
 ITEM_FIELDS = """name owner { login } isPrivate pushedAt url
   defaultBranchRef { target { oid } }
   repositoryTopics(first: 20) { nodes { topic { name } } }
@@ -340,9 +341,12 @@ def accept_invites(owners: set) -> Tuple[int, Dict[str, List[dict]], set]:
     return accepted, waiting, new_owners
 
 
-def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, quiet: bool = False) -> List[dict]:
+def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, quiet: bool = False,
+            local: bool = False) -> List[dict]:
     """Items you and your friends published (that you can see), fresh from GitHub once per run.
-    Invites from people who aren't your friends yet are kept in _catalog["waiting"] (quiet: don't mention them)."""
+    Invites from people who aren't your friends yet are kept in _catalog["waiting"] (quiet: don't mention them).
+    local (sync): items whose clone in the cache has the commit GitHub is at are read from the clone, your
+    other items only from the repo list (no version); only friends' new versions are read from GitHub."""
     if "all" not in _catalog:
         owners = {cfg["owner"].lower(), cfg["login"].lower()} | {f.lower() for f in cfg.get("friends", [])}
         core.progress(0, 1, "GitHub: checking invites")
@@ -356,11 +360,12 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
         _catalog["waiting"] = waiting
         for who, n in ((w, len(items)) for w, items in waiting.items() if not quiet):
             info(f"@{who} shared {n} item{'s' if n != 1 else ''} with you: skylls source add {who}")
-        repos, cursor = [], ""
+        repos, nodes, cursor = [], {}, ""
         while True:
             core.progress(0, 1, f"GitHub: listing your repos ({len(repos)} so far)")
             page = graphql(LIST_QUERY, **({"endCursor": cursor} if cursor else {}))["viewer"]["repositories"]
             repos += [f"{n['owner']['login']}/{n['name']}" for n in page["nodes"]]
+            nodes.update({f"{n['owner']['login']}/{n['name']}": n for n in page["nodes"]})
             if not page["pageInfo"]["hasNextPage"]:
                 break
             cursor = page["pageInfo"]["endCursor"]
@@ -369,6 +374,11 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
         for who in ([] if quiet else unknown):  # shared earlier (already accepted) by someone not a source
             info(f"{who} may have shared skylls items with you: skylls source add {who}")
         records_ = []
+        if local:
+            known = {r: node for r in wanted if (node := from_clone(nodes[r])
+                                                 or (nodes[r] if mine(cfg, r.split("/")[0]) else None))}
+            records_ += [rec for node in known.values() if (rec := to_record(cfg, node))]
+            wanted = [r for r in wanted if r not in known]
         for start in range(0, len(wanted), 20):  # 40 big items can take GitHub over its 10 s limit
             chunk = wanted[start:start + 20]
             core.progress(start, len(wanted), f"GitHub: reading items {start + 1}-{start + len(chunk)}")
@@ -378,6 +388,32 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
         _catalog["all"] = sorted(records_, key=lambda r: (r["kind"], r["name"].lower(), r["owner"].lower()))
     return [r for r in _catalog["all"] if (not kind or r["kind"] == kind)
             and (not owner or r["owner"].lower() == owner.lower())]
+
+
+def from_clone(node: dict) -> Optional[dict]:
+    """The ITEM_FIELDS of a listed repo read from its clone in the cache (without open suggestions), when
+    the clone has the commit GitHub is at; None when it doesn't."""
+    oid = ((node.get("defaultBranchRef") or {}).get("target") or {}).get("oid")
+    path = REPOS_CACHE / node["owner"]["login"] / node["name"]
+    if not oid or not (path / ".git").exists():
+        return None
+    files = {"changelog": "CHANGELOG.md", "skillmd": "SKILL.md", "claudemd": "CLAUDE.md", "agentsmd": "AGENTS.md"}
+    ask = f"{oid}\n" + "".join(f"{oid}:{f}\n" for f in files.values())
+    res = subprocess.run(["git", "cat-file", "--batch"], cwd=path, input=ask.encode(), capture_output=True)
+    out, blobs = res.stdout, []
+    while out and res.returncode == 0:  # "<id> <type> <size>\n<content>\n", or "<name> missing\n"
+        header, _, out = out.partition(b"\n")
+        parts = header.split()
+        if len(parts) != 3:
+            blobs.append(None)
+            continue
+        size = int(parts[2])
+        blobs.append(out[:size])
+        out = out[size + 1:]
+    if len(blobs) != 1 + len(files) or blobs[0] is None:  # the clone doesn't have that commit
+        return None
+    return {**node, **{k: {"text": b.decode(errors="replace")} if b is not None else None
+                       for k, b in zip(files, blobs[1:])}}
 
 
 def to_record(cfg: dict, node: dict) -> Optional[dict]:
@@ -1395,8 +1431,8 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
              keep_memory: bool = False) -> None:
     """Publish what changed in your published items, then install newer versions of what friends shared."""
     published, updated, failed, unchanged_ = [], [], [], 0
-    section("Reading your items and your friends' from GitHub")
-    mine_ = [r for r in catalog(cfg) if r["mine"]]
+    section("Listing your items and your friends' on GitHub (unchanged ones are read on this computer)")
+    mine_ = [r for r in catalog(cfg, local=True) if r["mine"]]
     section(f"Publishing your changes ({len(mine_)} published items)")
     for i, r in enumerate(mine_):
         core.progress(i, len(mine_), f"{one(r['kind'])} {r['name']}")

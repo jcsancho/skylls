@@ -90,8 +90,9 @@ cat $HOME/agents/btc/wiki/index.md $HOME/agents/btc/alice-wiki/index.md
 echo "--- sync without -m never asks: the log lists the changed files"; user alice
 echo "Quiet." >> $HOME/.claude/skills/pdf/SKILL.md
 s sync --skip-scan | grep -c "not found" || true; grep -m1 -A2 "^## " $HOME/.claude/skills/pdf/CHANGELOG.md | tail -1
-echo "--- sync with nothing changed skips every item (no scan, no fetch)"
-s sync | grep -E "Unchanged|Scanning|Published:"
+echo "--- sync with nothing changed skips every item (no scan, no fetch, nothing read from GitHub)"
+n=$(wc -l < $T/gh/log); s sync | grep -E "Unchanged|Scanning|Published:"
+echo "items read from GitHub: $(tail -n +$((n + 1)) $T/gh/log | grep -c "query { r0" || true)"
 echo "--- a skill linked to a folder another installer keeps elsewhere still syncs"
 mkdir -p $HOME/elsewhere; mv $HOME/.claude/skills/pdf $HOME/elsewhere/pdf; ln -s $HOME/elsewhere/pdf $HOME/.claude/skills/pdf
 echo "Linked." >> $HOME/elsewhere/pdf/SKILL.md; s view | grep -E "skill pdf"

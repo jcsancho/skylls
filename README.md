@@ -110,7 +110,8 @@ skylls sync -m "Small fixes"        # publish every published item you changed (
                                     # swarms; each one scanned), then install the newer versions
                                     # of skills, agents and swarms friends shared with you
                                     # (no -m: never asks; the log lists the changed files;
-                                    # --keep-memory: keep your agents'/swarms' memory as it is)
+                                    # --keep-memory: keep your agents'/swarms' memory as it is;
+                                    # unchanged items are checked on this computer, not GitHub)
 skylls view                         # only list what sync would publish (with the changed files)
                                     # and which newer versions it would install, plus what is on
                                     # GitHub but not on this computer; changes nothing
@@ -143,7 +144,8 @@ skylls push ./path/to/skill                 # or a folder path
 - **Secret scan:** before anything goes up, push scans for API keys, tokens,
   passwords, private keys and personal data (emails, phone numbers…) with
   [gitleaks](https://github.com/gitleaks/gitleaks), and publishes nothing if it
-  finds any. `--skip-scan` is for false positives.
+  finds any. Example values cut short or blanked out (`"sk-proj-abc…"`,
+  `xxxxxx`, `<your-key>`) are ignored; `--skip-scan` is for other false positives.
 - **`CHANGELOG.md`:** each item has one, written by skylls (don't edit it).
   It holds a **plain one-sentence summary** (written by Claude through
   `claude -p`, or yours with `--about "…"`), who created it, and one entry per
