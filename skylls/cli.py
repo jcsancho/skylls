@@ -649,6 +649,7 @@ Every item you publish gets its own private GitHub repo; you share item by item.
   {GREEN}installed{NC} [-g] [-a A]              Installed skills (and newer versions)
   {GREEN}pull{NC} [--update]                    Check for new versions (--update: install them)
   {GREEN}sync{NC} [-m msg]                      Publish your changes + get friends' new versions
+  {GREEN}view{NC}                               What sync would do, and what's on GitHub but not here
   {GREEN}remove{NC} <name>                      Remove from this computer (agents/swarms: to the Trash)
   {GREEN}search{NC} <query>                     Public skills on skills.sh (add owner/repo/skill)
 
@@ -750,6 +751,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("-y", "--yes", action="store_true", help="Publish new memory notes without asking.")
     sp.add_argument("--keep-memory", action="store_true",
                     help="Keep your copies of agents'/swarms' memory; the owners' latest go next to them.")
+    sub.add_parser("view", help="What sync would publish and install, and what isn't on this computer (changes nothing).")
     sp = sub.add_parser("revoke", help="Take back everything you shared with these users.")
     sp.add_argument("users", nargs="+", metavar="@user")
     sp.add_argument("-y", "--yes", action="store_true", help="Don't ask first.")
@@ -816,6 +818,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         kinds.cmd_source(cfg, args.action, args.owner, args.dry_run)
     elif args.cmd == "sync":
         kinds.cmd_sync(cfg, args.message, args.skip_scan, args.dry_run, args.yes, args.keep_memory)
+    elif args.cmd == "view":
+        kinds.cmd_view(cfg)
     elif args.cmd == "revoke":
         kinds.cmd_revoke(cfg, args.users, args.yes, args.dry_run)
     elif args.cmd == "people":

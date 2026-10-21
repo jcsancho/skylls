@@ -809,14 +809,27 @@ def blob_id(data: bytes) -> str:
 
 
 def unchanged(cfg: dict, rec: dict, src: Path, dry_run: bool) -> bool:
-    """True when the local item matches its latest published version (checked offline against the clone
-    in the cache, which must be at the commit GitHub has): sync then skips the scan, fetch and gh calls."""
+    """True when the local item matches its latest published version: sync then skips the scan, fetch
+    and gh calls."""
+    return bool(rec.get("private")) and local_changes(cfg, rec, src, dry_run) == {}
+
+
+def local_changes(cfg: dict, rec: dict, src: Path, dry_run: bool, fetch: bool = False) -> Optional[Dict[str, str]]:
+    """What the local item changed since its latest published version, {file: new|changed|removed}; None
+    when that can't be told. Checked offline against the clone in the cache, which must be at the commit
+    GitHub has (fetch: update the clone first when it isn't)."""
     path = REPOS_CACHE / rec["repo"]
-    if not rec.get("head") or not rec.get("private") or not (path / ".git").exists():
-        return False
-    res = git("ls-tree", "-r", "-z", rec["head"], cwd=path, check=False)
-    if res.returncode != 0:  # the clone doesn't have that commit yet
-        return False
+    if not rec.get("head"):
+        return None
+    res = git("ls-tree", "-r", "-z", rec["head"], cwd=path, check=False) if (path / ".git").exists() else None
+    if fetch and (res is None or res.returncode != 0):
+        try:
+            sync_item(rec["repo"])
+        except SystemExit:
+            return None
+        res = git("ls-tree", "-r", "-z", rec["head"], cwd=path, check=False)
+    if res is None or res.returncode != 0:  # the clone doesn't have that commit yet
+        return None
     kind = rec["kind"]
     if kind != "skills" and not dry_run and (roots := memory_roots(kind, src)):
         snapshot_memory(src, roots)
@@ -830,7 +843,9 @@ def unchanged(cfg: dict, rec: dict, src: Path, dry_run: bool) -> bool:
         meta, _, rel = line.partition("\t")
         if rel != core.CHANGELOG:
             have[rel] = meta.split()[2]
-    return want == have
+    changes = {f: "new" if f not in have else "changed" for f in want if want[f] != have.get(f)}
+    changes.update({f: "removed" for f in have if f not in want})
+    return changes
 
 
 def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, about: Optional[str],
@@ -1324,26 +1339,51 @@ def cmd_pull(cfg: dict, update: bool, agent: Optional[str], is_global: Optional[
     done: List[str] = []
     if not update:
         return done
-    seen = set()
+    for row, r in skill_updates(cfg, agent, is_global):
+        info(f"{row['name']}: v{row['version'] or '-'} → v{r['version']}")
+        with tempfile.TemporaryDirectory() as tmp:
+            src, _, log = extract("skills", r, None, Path(tmp))
+            log["source"] = f"{r['repo']} v{r['version']}"
+            core.write_changelog(src, r["name"], log)
+            core.copy_skill(src, row["dir"], row["name"], dry_run, force=True)
+        done.append(f"skill {row['name']} v{r['version']}")
+    return done
+
+
+def skill_updates(cfg: dict, agent: Optional[str], is_global: Optional[bool]) -> List[Tuple[dict, dict]]:
+    """Installed skills with a newer version: (installed row, catalog record), one per real folder."""
+    found, seen = [], set()
     for row in installed_skills(cfg, agent, is_global):
         r = latest_for(cfg, row) if not row["link"] else None
         where = (row["dir"] / row["name"]).resolve()  # run from ~, the project and global folders are one
         if newer(row, r) and where not in seen:
             seen.add(where)
-            info(f"{row['name']}: v{row['version'] or '-'} → v{r['version']}")
-            with tempfile.TemporaryDirectory() as tmp:
-                src, _, log = extract("skills", r, None, Path(tmp))
-                log["source"] = f"{r['repo']} v{r['version']}"
-                core.write_changelog(src, r["name"], log)
-                core.copy_skill(src, row["dir"], row["name"], dry_run, force=True)
-            done.append(f"skill {row['name']} v{r['version']}")
-    return done
+            found.append((row, r))
+    return found
+
+
+def item_updates(cfg: dict) -> List[Tuple[str, Path, dict]]:
+    """Agents/swarms installed from friends with a newer version: (kind, folder, catalog record)."""
+    by_repo = {r["repo"].lower(): r for r in catalog(cfg) if not r["mine"]}
+    found = []
+    for kind in ("agents", "swarms"):
+        root = Path(cfg["dirs"][kind]).expanduser()
+        for item in sorted(root.iterdir()) if root.is_dir() else []:
+            source = core.read_changelog(item)["source"] if is_item(kind, item) else ""
+            r = by_repo.get(source.split(" ")[0].lower()) if source else None
+            if r and newer({"version": installed_version(item)}, r):
+                found.append((kind, item, r))
+    return found
 
 
 def local_original(cfg: dict, kind: str, name: str) -> Optional[Path]:
     """Your own local copy of one of your published items (not a download), if it is on this computer."""
     src = core.locate_installed(cfg, name, None, None) if kind == "skills" else local_item(cfg, kind, name)
-    return src if src and is_item(kind, src) and not src.is_symlink() and not core.read_changelog(src)["source"] else None
+    if src and src.is_symlink():  # e.g. ~/.claude/skills/x → ~/.agents/skills/x put there by another installer
+        src = src.resolve()
+        if src.name != name or src.is_relative_to(REPOS_CACHE.resolve()):
+            return None
+    return src if src and is_item(kind, src) and not core.read_changelog(src)["source"] else None
 
 
 def installed_version(path: Path) -> Optional[str]:
@@ -1381,20 +1421,14 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
         ok(f"Unchanged since the last version: {unchanged_} item{'s' if unchanged_ != 1 else ''}.")
     section("Getting newer versions of what friends shared with you")
     updated += cmd_pull(cfg, True, None, None, dry_run)  # skills
-    by_repo = {r["repo"].lower(): r for r in catalog(cfg) if not r["mine"]}
-    for kind in ("agents", "swarms"):
-        root = Path(cfg["dirs"][kind]).expanduser()
-        for item in sorted(root.iterdir()) if root.is_dir() else []:
-            source = core.read_changelog(item)["source"] if is_item(kind, item) else ""
-            r = by_repo.get(source.split(" ")[0].lower()) if source else None
-            if r and newer({"version": installed_version(item)}, r):
-                info(f"{one(kind)} {item.name}: v{installed_version(item) or '-'} → v{r['version']}")
-                try:
-                    cmd_add_item(cfg, kind, r["name"], r["owner"], item.name, True, keep_memory, dry_run)
-                except SystemExit:
-                    failed.append(f"{one(kind)} {item.name}")
-                    continue
-                updated.append(f"{one(kind)} {item.name} v{r['version']}")
+    for kind, item, r in item_updates(cfg):
+        info(f"{one(kind)} {item.name}: v{installed_version(item) or '-'} → v{r['version']}")
+        try:
+            cmd_add_item(cfg, kind, r["name"], r["owner"], item.name, True, keep_memory, dry_run)
+        except SystemExit:
+            failed.append(f"{one(kind)} {item.name}")
+            continue
+        updated.append(f"{one(kind)} {item.name} v{r['version']}")
     section("Sync done" + (" (dry run)" if dry_run else ""))
     if not dry_run:
         ok(f"Published: {', '.join(published) or 'nothing changed'}")
@@ -1403,6 +1437,96 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
         warn(f"Not synced (see above): {', '.join(failed)}")
     if core.JSON_MODE:
         emit({"published": published, "updated": updated, "failed": failed})
+
+
+VIEW_FILES = 8  # files listed per item by view
+
+
+def home_path(path: Path) -> str:
+    for home in (Path.home(), Path.home().resolve()):  # resolved paths: /var is /private/var on macOS
+        if path.is_relative_to(home):
+            return "~/" + path.relative_to(home).as_posix()
+    return str(path)
+
+
+def cmd_view(cfg: dict) -> None:
+    """view: what sync would publish and install, and why, without changing anything (no scan)."""
+    section("Reading your items and your friends' from GitHub")
+    mine_ = [r for r in catalog(cfg) if r["mine"]]
+    changed, unknown, same, absent = [], [], 0, 0
+    for i, r in enumerate(mine_):
+        core.progress(i, len(mine_), f"{one(r['kind'])} {r['name']}")
+        src = local_original(cfg, r["kind"], r["name"])
+        diff = local_changes(cfg, r, src, True, fetch=True) if src else {}
+        if not src:
+            absent += 1
+        elif diff is None:
+            unknown.append(f"{one(r['kind'])} {r['name']}")
+        elif diff:
+            changed.append((r, src, diff))
+        else:
+            same += 1
+    core.progress(len(mine_), len(mine_), "checked")
+    core.progress_done()
+    remote = [r for r in catalog(cfg) if not mark_installed(cfg, r["kind"], dict(r))["installed"]
+              and not (r["mine"] and local_original(cfg, r["kind"], r["name"]))]
+    section(f"Yours, changed since their last version ({len(changed)}): sync publishes them")
+    marks = {"new": f"{GREEN}+{NC}", "changed": f"{YELLOW}~{NC}", "removed": f"{YELLOW}-{NC}"}
+    for r, src, diff in changed:
+        counts = ", ".join(f"{n} {w}" for w in marks if (n := sum(1 for v in diff.values() if v == w)))
+        say(f"  {GREEN}•{NC} {one(r['kind'])} {CYAN}{r['name']}{NC} v{r['version']}  {home_path(src)}  ({counts})")
+        for f in sorted(diff)[:VIEW_FILES]:
+            say(f"      {marks[diff[f]]} {f}")
+        if len(diff) > VIEW_FILES:
+            say(f"      … and {len(diff) - VIEW_FILES} more")
+    if not changed:
+        ok("Nothing: your items match their last version.")
+    if unknown:
+        warn(f"Couldn't compare (sync checks them): {', '.join(unknown)}")
+    info(f"Unchanged: {same}. Not on this computer: {absent}.")
+    updates = [("skills", row["dir"] / row["name"], r, row["version"]) for row, r in skill_updates(cfg, None, None)]
+    updates += [(kind, item, r, installed_version(item)) for kind, item, r in item_updates(cfg)]
+    section(f"Newer versions to install ({len(updates)}): sync installs them")
+    for kind, path, r, have in updates:
+        whose = "yours" if r["mine"] else f"from {r['owner']}"
+        say(f"  {GREEN}•{NC} {one(kind)} {CYAN}{path.name}{NC} v{have or '-'} → v{r['version']}  "
+            f"{home_path(path)}  ({whose})")
+        if not have:
+            say(f"      {YELLOW}!{NC} no skylls version here (not installed by skylls?): sync replaces it "
+                f"with {r['repo']}")
+        elif path.name != r["name"]:
+            say(f"      {YELLOW}!{NC} a copy of {r['name']} under another name: sync updates it too")
+    if not updates:
+        ok("Nothing: everything is up to date.")
+    view_remote(remote)
+    info("Nothing was changed. Run skylls sync to do it (each publish is scanned for secrets first).")
+    if core.JSON_MODE:
+        emit({"publish": [{"kind": r["kind"], "name": r["name"], "version": r["version"], "path": str(src),
+                           "files": diff} for r, src, diff in changed],
+              "update": [{"kind": kind, "name": r["name"], "path": str(path), "version": have,
+                          "newer": r["version"], "owner": r["owner"]} for kind, path, r, have in updates],
+              "unchanged": same, "not_local": absent, "unknown": unknown,
+              "not_installed": [{k: r.get(k) for k in ("kind", "name", "owner", "version", "summary")}
+                                for r in remote]})
+
+
+def view_remote(remote: List[dict]) -> None:
+    """view: what is on GitHub (yours and friends') but not on this computer, and how to install it."""
+    section(f"On GitHub, not on this computer ({len(remote)}): install any with skylls add")
+    for r in sorted(remote, key=lambda r: (not r["mine"], r["owner"].lower(), r["kind"], r["name"].lower())):
+        summary = (r.get("summary") or "").split("\n")[0]
+        summary = summary if len(summary) <= 90 else summary[:89].rstrip() + "…"
+        whose = "" if r["mine"] else f"  (from {r['owner']})"
+        say(f"  {GREEN}•{NC} {one(r['kind'])} {CYAN}{r['name']}{NC} {BLUE}v{r['version']}{NC}{whose}"
+            + (f"  {summary}" if summary else ""))
+    if not remote:
+        ok("Nothing: everything on GitHub is on this computer.")
+        return
+    kinds_ = {r["kind"] for r in remote}
+    hints = [f"skylls{cmd_prefix(k_)} add <name>{' -g' if k_ == 'skills' else ''}"
+             for k_ in ("skills", "agents", "swarms") if k_ in kinds_]
+    info(f"Install one: {'  /  '.join(hints)}"
+         + ("  (a friend's: add --from <owner>)" if any(not r["mine"] for r in remote) else ""))
 
 
 # ── Sharing ────────────────────────────────────────────────────────────────

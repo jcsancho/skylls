@@ -111,6 +111,9 @@ skylls sync -m "Small fixes"        # publish every published item you changed (
                                     # of skills, agents and swarms friends shared with you
                                     # (no -m: never asks; the log lists the changed files;
                                     # --keep-memory: keep your agents'/swarms' memory as it is)
+skylls view                         # only list what sync would publish (with the changed files)
+                                    # and which newer versions it would install, plus what is on
+                                    # GitHub but not on this computer; changes nothing
 skylls remove pdf                   # remove your local copy (never touches GitHub)
 ```
 
@@ -381,6 +384,7 @@ Add `--dry-run` to any command to see what it would do without changing anything
 | `installed [-g] [-a A]` | Installed skills and newer versions |
 | `pull [--update]` | Check for (and install) newer versions |
 | `sync [-m msg] [--skip-scan] [-y] [--keep-memory]` | Publish your changed items, then install friends' newer versions |
+| `view` | What `sync` would publish (with the changed files) and install, and what is on GitHub but not on this computer; changes nothing |
 | `remove <name> [-g] [-a A]` | Remove a local skill copy |
 | `push <name\|path> [-m msg] [--minor\|--major] [--about text] [--folder F] [--skip-scan]` | Publish a new version to its private repo |
 | `share <name> @user… \| --all @user` | Let friends install it (no users: who has access) |

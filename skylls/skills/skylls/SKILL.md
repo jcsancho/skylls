@@ -44,6 +44,7 @@ Read an installed SKILL.md only when you are about to use it.
     skylls unshare <name> @user                      # take one item back; skylls revoke @user = everything
     skylls source add <friend>                       # see what a friend shared with the user
     skylls sync -m "what changed"                    # publish all the user's changed items + install friends' new versions
+    skylls view                                      # first: what sync would publish/install + what isn't installed (changes nothing)
     skylls suggest <name> --from <owner> "idea"      # improve someone else's item
     skylls swarms propose <name> --from <owner> -m "what"   # your changes to a friend's agent/swarm copy → pull request
     skylls swarms allow-prs <name> | --all           # owner: let the people you share with send pull requests

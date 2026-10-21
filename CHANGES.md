@@ -3,6 +3,30 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.12.0 — 2026-10-20
+
+- **`sync --view` is now its own command, `skylls view`** (it doesn't sync).
+- It also lists what is on GitHub but not on this computer (yours and what
+  friends shared), one line each with its summary, and ends with the command
+  to install one (`skylls add <name> -g`, `skylls agents add <name>` …).
+  `--json` adds them as `not_installed`.
+
+## 1.11.1 — 2026-10-20
+
+- `sync` (and `--view`) now see your skills that are symlinks to a folder
+  another installer keeps elsewhere (e.g. `~/.claude/skills/x` →
+  `~/.agents/skills/x`): it follows the link and publishes the real folder.
+  Before, they counted as "not on this computer" and edits were never published.
+
+## 1.11.0 — 2026-10-20
+
+- **New `sync --view`**: lists what `sync` would do without doing it — your
+  items changed since their last version, each with its changed files
+  (`+` new, `~` changed, `-` removed), and the newer versions it would
+  install, with the folder each goes to. It flags skills with no skylls
+  version (sync would replace them) and copies under another name (e.g. a
+  backup folder). No secret scan; nothing changes. `--json` gives the lists.
+
 ## webapp 1.8.4 — 2026-10-20
 
 - Docs, `llms.txt` and `skill.md`: updates refresh a friend's copy of an

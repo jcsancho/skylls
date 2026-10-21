@@ -74,8 +74,11 @@ sj installed | grep pdf; s pull --update | grep -E "→|Installed"; sj installed
 s add pdf@1.0.0 --from alice -y | grep Installed; grep -m1 "^## " $HOME/.claude/skills/pdf/CHANGELOG.md
 echo "--- sync: alice publishes her changes, bob gets them"; user alice
 echo "Syncs." >> $HOME/.claude/skills/pdf/SKILL.md; echo "more" >> $HOME/agents/btc/CLAUDE.md
+echo "--- view lists what sync would do and changes nothing"
+s view | grep -E "^  •|^      [+~-] |Unchanged|Nothing was"; sj view | head -c 60; echo
 s sync -m "Synced" --skip-scan | grep -E "Published|up to date|Sync done"
-user bob; s sync | grep -E "→|Updated from|Published:"; sj installed | grep pdf
+user bob; s view | grep -E "^  •|Nothing:|Install one"
+s sync | grep -E "→|Updated from|Published:"; sj installed | grep pdf
 grep -m1 "^## " $HOME/agents/btc/CHANGELOG.md; s sync | grep "Updated from"
 echo "--- updates refresh bob's copy of the memory; --keep-memory keeps his and puts alice's next to it"; user alice
 echo "page v2" > $HOME/agents/btc/wiki/index.md; s agents push btc -m "wiki v2" --skip-scan -y | grep Published
@@ -89,6 +92,10 @@ echo "Quiet." >> $HOME/.claude/skills/pdf/SKILL.md
 s sync --skip-scan | grep -c "not found" || true; grep -m1 -A2 "^## " $HOME/.claude/skills/pdf/CHANGELOG.md | tail -1
 echo "--- sync with nothing changed skips every item (no scan, no fetch)"
 s sync | grep -E "Unchanged|Scanning|Published:"
+echo "--- a skill linked to a folder another installer keeps elsewhere still syncs"
+mkdir -p $HOME/elsewhere; mv $HOME/.claude/skills/pdf $HOME/elsewhere/pdf; ln -s $HOME/elsewhere/pdf $HOME/.claude/skills/pdf
+echo "Linked." >> $HOME/elsewhere/pdf/SKILL.md; s view | grep -E "skill pdf"
+s sync -m "Linked" --skip-scan | grep -E "Published:"; unlink $HOME/.claude/skills/pdf; mv $HOME/elsewhere/pdf $HOME/.claude/skills/pdf
 echo "--- revoke: alice takes back everything from bob, then shares again"; user alice
 s revoke @bob --dry-run | grep -E "•|Would"; s revoke @bob -y | grep -E "Revoked"; s revoke @bob | tail -1
 s share pdf @bob >/dev/null; s agents share btc @bob | grep Invited; user bob; s list >/dev/null
