@@ -3,6 +3,24 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.13.0 — 2026-10-21
+
+- **`sync` no longer lists all your repos on GitHub**: skylls remembers your
+  published items on this computer (`~/.cache/skylls/mine.json`, written each
+  time skylls lists your repos and kept up to date when you publish or move an
+  item), so `sync` asks GitHub only for the repos friends shared with you and
+  reads a friend's item only when it has a new version. Your own items are
+  checked against their copies on this computer, plus one quick question to
+  GitHub: which of your repos were pushed to since the last look. The first
+  `sync` after this update lists everything once to build that list.
+- **`sync` brings changes others made to your items into your copy**: when
+  someone pushed to one of your items (a friend you gave write access, a merged
+  pull request, you on another computer), `sync` copies the files they changed
+  into your local copy (memory kept elsewhere in your home too), then publishes
+  your own changes as usual. If you both changed the same file it leaves that
+  item alone and says so: merge by hand, then `skylls push <name>`. `view` lists
+  these changes in their own section.
+
 ## 1.12.3 — 2026-10-21
 
 - **GitHub hiccups no longer stop or hang a run**: a GitHub query that gets no

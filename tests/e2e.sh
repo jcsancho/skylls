@@ -93,10 +93,28 @@ s sync --skip-scan | grep -c "not found" || true; grep -m1 -A2 "^## " $HOME/.cla
 echo "--- sync with nothing changed skips every item (no scan, no fetch, nothing read from GitHub)"
 n=$(wc -l < $T/gh/log); s sync | grep -E "Unchanged|Scanning|Published:"
 echo "items read from GitHub: $(tail -n +$((n + 1)) $T/gh/log | grep -c "query { r0" || true)"
+echo "her repos listed on GitHub (only what friends shared is): $(tail -n +$((n + 1)) $T/gh/log | grep -c "affiliations: \[OWNER" || true)"
+echo "--- an item pushed to a fresh folder stays known to sync without listing her repos"
+mkskill fresh "Fresh skill" "New."; s push fresh -m first --folder tools --skip-scan | grep -E "Created|folder"
+n=$(wc -l < $T/gh/log); s sync | grep -E "Unchanged"; python3 -c "import json; print(sorted(json.load(open('$HOME/.cache/skylls/mine.json'))['repos']))"
+echo "her repos listed on GitHub: $(tail -n +$((n + 1)) $T/gh/log | grep -c "affiliations: \[OWNER" || true)"
 echo "--- a skill linked to a folder another installer keeps elsewhere still syncs"
 mkdir -p $HOME/elsewhere; mv $HOME/.claude/skills/pdf $HOME/elsewhere/pdf; ln -s $HOME/elsewhere/pdf $HOME/.claude/skills/pdf
 echo "Linked." >> $HOME/elsewhere/pdf/SKILL.md; s view | grep -E "skill pdf"
 s sync -m "Linked" --skip-scan | grep -E "Published:"; unlink $HOME/.claude/skills/pdf; mv $HOME/elsewhere/pdf $HOME/.claude/skills/pdf
+echo "--- bob has write access and pushes to alice's pdf: her sync brings it into her untouched copy"; user bob
+git clone -q https://github.com/alice/skylls-skill-pdf.git $HOME/w-pdf; cd $HOME/w-pdf; echo "Bob's tip." >> SKILL.md
+echo extra > EXTRA.md; git add -A; git commit -qm "bob's tip"; git push -q; cd $HOME
+user alice; s view | grep -E "someone else|by bob|^      [+~-] "; s sync | grep -E "took|Taken|Published:"
+tail -1 $HOME/.claude/skills/pdf/SKILL.md; ls $HOME/.claude/skills/pdf; s sync | grep -E "took|Unchanged"
+echo "--- both change SKILL.md: not synced, she is told how to keep hers"; user bob
+cd $HOME/w-pdf; git pull -q; echo "Bob again." >> SKILL.md; git commit -qam again; git push -q; cd $HOME
+user alice; echo "Alice too." >> $HOME/.claude/skills/pdf/SKILL.md; s sync | grep -E "changed it on GitHub|Not synced"
+s push pdf -m "kept mine" --skip-scan | grep Published; s sync | grep -E "took|Unchanged"
+echo "--- they change different files: sync takes his, then publishes hers"; user bob
+cd $HOME/w-pdf; git pull -q --rebase; echo notes > BOB.md; git add -A; git commit -qm notes; git push -q; cd $HOME
+user alice; echo "Alice again." >> $HOME/.claude/skills/pdf/SKILL.md; s sync -m mine --skip-scan | grep -E "took|Published:"
+ls $HOME/.claude/skills/pdf; s sync | grep -E "took|Unchanged"
 echo "--- revoke: alice takes back everything from bob, then shares again"; user alice
 s revoke @bob --dry-run | grep -E "•|Would"; s revoke @bob -y | grep -E "Revoked"; s revoke @bob | tail -1
 s share pdf @bob >/dev/null; s agents share btc @bob | grep Invited; user bob; s list >/dev/null

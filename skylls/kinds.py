@@ -45,6 +45,7 @@ from skylls import cli as core
 from skylls.cli import BLUE, CYAN, GREEN, NC, YELLOW, die, emit, fail, git, info, ok, say, section, warn
 
 REPOS_CACHE = Path.home() / ".cache" / "skylls" / "repos"
+MINE_INDEX = Path.home() / ".cache" / "skylls" / "mine.json"  # your item repos, so sync needn't list them
 MAX_FILE = 5 * 1024 * 1024  # files bigger than this are not shared (agents/swarms/memory)
 KINDS = {
     "skills": {"one": "skill", "main": ("SKILL.md",)},
@@ -275,11 +276,16 @@ def ensure_private(repo: str) -> None:
 
 
 # ── Catalog: what you and your friends have ────────────────────────────────
+ALL_REPOS, SHARED_WITH_ME = "OWNER, COLLABORATOR, ORGANIZATION_MEMBER", "COLLABORATOR"
 LIST_QUERY = """query($endCursor: String) { viewer { repositories(first: PAGE, after: $endCursor,
-  affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER],
-  ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]) {
-  nodes { name owner { login } isPrivate defaultBranchRef { target { oid } }
-    repositoryTopics(first: 20) { nodes { topic { name } } } } pageInfo { hasNextPage endCursor } } } }"""
+  affiliations: [AFFILIATIONS], ownerAffiliations: [AFFILIATIONS]) {
+  nodes { REPO_FIELDS } pageInfo { hasNextPage endCursor } } } }"""
+REPO_FIELDS = """name owner { login } isPrivate pushedAt defaultBranchRef { target { oid } }
+    repositoryTopics(first: 20) { nodes { topic { name } } }"""
+LIST_QUERY = LIST_QUERY.replace("REPO_FIELDS", REPO_FIELDS)
+PUSHED_QUERY = """query($login: String!, $endCursor: String) { repositoryOwner(login: $login) {
+  repositories(first: 20, after: $endCursor, orderBy: {field: PUSHED_AT, direction: DESC}) {
+  nodes { %s } pageInfo { hasNextPage endCursor } } } }""" % REPO_FIELDS
 ITEM_FIELDS = """name owner { login } isPrivate pushedAt url
   defaultBranchRef { target { oid } }
   repositoryTopics(first: 20) { nodes { topic { name } } }
@@ -324,8 +330,12 @@ def accept_invites(owners: set) -> Tuple[int, Dict[str, List[dict]], set]:
     """Accept pending invites to skylls repos from these owners (or sent by them); list the others by owner.
     Also returns the new owners (a friend's organization) of repos accepted because a friend sent the invite."""
     invites = gh_json(core.gh_api("user/repository_invitations", "--paginate")) or []
+    if not isinstance(invites, list):          # an error answer (rate limit, network) is a dict, not a list
+        invites = []
     accepted, waiting, new_owners = 0, {}, set()
     for inv in invites:
+        if not isinstance(inv, dict):
+            continue
         repo = (inv.get("repository") or {}).get("full_name", "")
         if not item_of(repo):
             continue
@@ -343,12 +353,101 @@ def accept_invites(owners: set) -> Tuple[int, Dict[str, List[dict]], set]:
     return accepted, waiting, new_owners
 
 
+def list_repos(affiliations: str) -> Dict[str, dict]:
+    """The repos the viewer has with these affiliations: {owner/name: list node}."""
+    nodes, cursor, size = {}, "", 100
+    while True:
+        core.progress(0, 1, f"GitHub: listing your repos ({len(nodes)} so far)")
+        data = graphql(LIST_QUERY.replace("PAGE", str(size)).replace("AFFILIATIONS", affiliations),
+                       fail=size <= 25, tries=2 if size > 25 else 3, **({"endCursor": cursor} if cursor else {}))
+        if data is None:  # GitHub couldn't list that many in time: smaller pages
+            size //= 2
+            continue
+        page = data["viewer"]["repositories"]
+        nodes.update({f"{n['owner']['login']}/{n['name']}": n for n in page["nodes"]})
+        if not page["pageInfo"]["hasNextPage"]:
+            return nodes
+        cursor = page["pageInfo"]["endCursor"]
+
+
+def load_mine(cfg: dict, pushed: bool = False):
+    """Your item repos as last listed on GitHub (from MINE_INDEX); None when there is no list for this owner.
+    pushed: also {owner: the newest push seen in their repos}."""
+    try:
+        index = json.loads(MINE_INDEX.read_text())
+    except (OSError, ValueError):
+        return None
+    if index.get("owner", "").lower() != cfg["owner"].lower() or not isinstance(index.get("repos"), dict):
+        return None
+    return (index["repos"], index.get("pushed") or {}) if pushed else index["repos"]
+
+
+def save_mine(cfg: dict, repos: Dict[str, dict], pushed: Optional[Dict[str, str]] = None) -> None:
+    pushed = pushed if pushed is not None else (load_mine(cfg, pushed=True) or ({}, {}))[1]
+    MINE_INDEX.parent.mkdir(parents=True, exist_ok=True)
+    MINE_INDEX.write_text(json.dumps({"owner": cfg["owner"], "repos": repos, "pushed": pushed},
+                                     indent=1, sort_keys=True))
+
+
+def index_node(node: dict) -> dict:
+    return {k: node[k] for k in ("name", "owner", "isPrivate", "repositoryTopics")}
+
+
+def is_item_node(node: dict) -> bool:
+    """A repo that is a skylls item: a prefixed name, or a short one with the 'skylls' topic."""
+    topics = [t["topic"]["name"] for t in (node.get("repositoryTopics") or {}).get("nodes", [])]
+    return bool(item_of(node["name"])) and (bool(item_of(node["name"], short=False)) or "skylls" in topics)
+
+
+def pushed_since(owner: str, since: str) -> List[dict]:
+    """This owner's repos pushed to since then (GitHub's pushedAt), newest first; all of them without since."""
+    found, cursor = [], ""
+    while True:
+        core.progress(0, 1, f"GitHub: what changed in {owner}'s repos")
+        data = graphql(PUSHED_QUERY, fail=False, login=owner, **({"endCursor": cursor} if cursor else {}))
+        page = ((data or {}).get("repositoryOwner") or {}).get("repositories")
+        if not page:
+            return found
+        for node in page["nodes"]:
+            if since and (node.get("pushedAt") or "") < since:
+                return found
+            found.append(node)
+        if not page["pageInfo"]["hasNextPage"]:
+            return found
+        cursor = page["pageInfo"]["endCursor"]
+
+
+def remember_mine(cfg: dict, repo: str, topics: List[str], folder: bool = False) -> None:
+    """Keep MINE_INDEX up to date after publishing one of your items (topics are added) or moving it to
+    another folder (folder: topics replace the old ones). It holds no versions: those are in the clones."""
+    repos = load_mine(cfg)
+    if repos is None:  # the next full listing writes it
+        return
+    owner, name = repo.split("/")
+    old = repos.get(repo) or {"name": name, "owner": {"login": owner}, "isPrivate": True}
+    had = [n["topic"]["name"] for n in (old.get("repositoryTopics") or {}).get("nodes", [])]
+    topics = topics if folder else had + [t for t in topics if t not in had]
+    repos[repo] = {**old, "repositoryTopics": {"nodes": [{"topic": {"name": t}} for t in topics]}}
+    save_mine(cfg, repos)
+
+
+def clone_head(node: dict) -> dict:
+    """A MINE_INDEX node with the commit its clone in the cache is at (none without a clone)."""
+    path = REPOS_CACHE / node["owner"]["login"] / node["name"]
+    res = git("rev-parse", "--verify", "--quiet", "origin/main", cwd=path, check=False) \
+        if (path / ".git").exists() else None
+    oid = res.stdout.strip() if res is not None and res.returncode == 0 else None
+    return {**node, "defaultBranchRef": {"target": {"oid": oid}} if oid else None}
+
+
 def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, quiet: bool = False,
             local: bool = False) -> List[dict]:
     """Items you and your friends published (that you can see), fresh from GitHub once per run.
     Invites from people who aren't your friends yet are kept in _catalog["waiting"] (quiet: don't mention them).
-    local (sync): items whose clone in the cache has the commit GitHub is at are read from the clone, your
-    other items only from the repo list (no version); only friends' new versions are read from GitHub."""
+    Every full listing remembers your item repos in MINE_INDEX. local (sync): only the repos shared with you are
+    listed on GitHub, yours come from MINE_INDEX and their clones in the cache, plus GitHub's state of those
+    pushed to since the last look; items whose clone has the commit GitHub is at are read from the clone, your
+    others without a version; only friends' new versions are read from GitHub."""
     if "all" not in _catalog:
         owners = {cfg["owner"].lower(), cfg["login"].lower()} | {f.lower() for f in cfg.get("friends", [])}
         core.progress(0, 1, "GitHub: checking invites")
@@ -362,20 +461,29 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
         _catalog["waiting"] = waiting
         for who, n in ((w, len(items)) for w, items in waiting.items() if not quiet):
             info(f"@{who} shared {n} item{'s' if n != 1 else ''} with you: skylls source add {who}")
-        repos, nodes, cursor, size = [], {}, "", 100
-        while True:
-            core.progress(0, 1, f"GitHub: listing your repos ({len(repos)} so far)")
-            data = graphql(LIST_QUERY.replace("PAGE", str(size)), fail=size <= 25, tries=2 if size > 25 else 3,
-                           **({"endCursor": cursor} if cursor else {}))
-            if data is None:  # GitHub couldn't list that many in time: smaller pages
-                size //= 2
-                continue
-            page = data["viewer"]["repositories"]
-            repos += [f"{n['owner']['login']}/{n['name']}" for n in page["nodes"]]
-            nodes.update({f"{n['owner']['login']}/{n['name']}": n for n in page["nodes"]})
-            if not page["pageInfo"]["hasNextPage"]:
-                break
-            cursor = page["pageInfo"]["endCursor"]
+        known_mine = load_mine(cfg, pushed=True) if local else None
+        if known_mine is None:
+            nodes = list_repos(ALL_REPOS)
+            pushed = {}
+            for r, n in nodes.items():
+                if mine(cfg, r.split("/")[0]):
+                    pushed[r.split("/")[0].lower()] = max(pushed.get(r.split("/")[0].lower(), ""), n.get("pushedAt") or "")
+            save_mine(cfg, {r: index_node(n) for r, n in nodes.items() if mine(cfg, r.split("/")[0]) and is_item_node(n)},
+                      pushed)
+        else:  # your repos: only those pushed to since the last look (a friend with write access, another computer)
+            known_mine, pushed = known_mine
+            nodes = {r: n for r, n in list_repos(SHARED_WITH_ME).items() if not mine(cfg, r.split("/")[0])}
+            nodes.update({r: clone_head(n) for r, n in known_mine.items()})
+            for who in sorted({cfg["owner"]} | {r.split("/")[0] for r in known_mine}, key=str.lower):
+                fresh = pushed_since(who, pushed.get(who.lower(), ""))
+                for n in fresh:
+                    if is_item_node(n):
+                        r = f"{n['owner']['login']}/{n['name']}"
+                        nodes[r], known_mine[r] = n, index_node(n)
+                if fresh:
+                    pushed[who.lower()] = max(pushed.get(who.lower(), ""), fresh[0].get("pushedAt") or "")
+            save_mine(cfg, known_mine, pushed)
+        repos = list(nodes)
         wanted = [r for r in repos if item_of(r) and r.split("/")[0].lower() in owners]
         unknown = sorted({r.split("/")[0] for r in repos if item_of(r)} - {r.split("/")[0] for r in wanted})
         for who in ([] if quiet else unknown):  # shared earlier (already accepted) by someone not a source
@@ -864,16 +972,39 @@ def local_changes(cfg: dict, rec: dict, src: Path, dry_run: bool, fetch: bool = 
     path = REPOS_CACHE / rec["repo"]
     if not rec.get("head"):
         return None
-    res = git("ls-tree", "-r", "-z", rec["head"], cwd=path, check=False) if (path / ".git").exists() else None
-    if fetch and (res is None or res.returncode != 0):
+    have = tree_blobs(path, rec["head"])
+    if fetch and have is None:
         try:
             sync_item(rec["repo"])
         except SystemExit:
             return None
-        res = git("ls-tree", "-r", "-z", rec["head"], cwd=path, check=False)
-    if res is None or res.returncode != 0:  # the clone doesn't have that commit yet
+        have = tree_blobs(path, rec["head"])
+    if have is None:  # the clone doesn't have that commit yet
         return None
-    kind = rec["kind"]
+    return diff_blobs(have, local_blobs(cfg, rec["kind"], src, dry_run))
+
+
+def diff_blobs(old: Dict[str, str], new: Dict[str, str]) -> Dict[str, str]:
+    changes = {f: "new" if f not in old else "changed" for f in new if new[f] != old.get(f)}
+    changes.update({f: "removed" for f in old if f not in new})
+    return changes
+
+
+def tree_blobs(path: Path, commit: str) -> Optional[Dict[str, str]]:
+    """{file: blob id} of a commit in a clone, without the changelog; None when the clone doesn't have it."""
+    res = git("ls-tree", "-r", "-z", commit, cwd=path, check=False) if (path / ".git").exists() else None
+    if res is None or res.returncode != 0:
+        return None
+    have = {}
+    for line in filter(None, res.stdout.split("\0")):
+        meta, _, rel = line.partition("\t")
+        if rel != core.CHANGELOG:
+            have[rel] = meta.split()[2]
+    return have
+
+
+def local_blobs(cfg: dict, kind: str, src: Path, dry_run: bool) -> Dict[str, str]:
+    """{file: blob id} of what publishing the local item would send (memory outside it snapshotted first)."""
     if kind != "skills" and not dry_run and (roots := memory_roots(kind, src)):
         snapshot_memory(src, roots)
     files = [f for f in local_files(kind, src) if f not in (core.CHANGELOG, SKILLS_MANIFEST)]
@@ -881,14 +1012,62 @@ def local_changes(cfg: dict, rec: dict, src: Path, dry_run: bool, fetch: bool = 
     want = {f: blob_id((src / f).read_bytes()) for f in files if not any(f.startswith(d + "/") for d in bundled)}
     if bundled:
         want[SKILLS_MANIFEST] = blob_id("".join(f"{d} {r}\n" for d, r in sorted(bundled.items())).encode())
-    have = {}
-    for line in filter(None, res.stdout.split("\0")):
-        meta, _, rel = line.partition("\t")
-        if rel != core.CHANGELOG:
-            have[rel] = meta.split()[2]
-    changes = {f: "new" if f not in have else "changed" for f in want if want[f] != have.get(f)}
-    changes.update({f: "removed" for f in have if f not in want})
-    return changes
+    return want
+
+
+def remote_changes(cfg: dict, rec: dict, src: Path, dry_run: bool) -> Optional[dict]:
+    """What changed on GitHub since the version your local copy is at, when someone else pushed to one of your
+    items (a friend with write access, a merged pull request, another computer): {"theirs": {file: what},
+    "yours": {file: what} (your local changes since that version), "conflicts": [files both changed
+    differently], "by": [authors], "base", "head"}; None when GitHub has nothing newer."""
+    version, head, path = installed_version(src), rec.get("head"), REPOS_CACHE / rec["repo"]
+    if not version or not head:
+        return None
+
+    def at_version() -> Optional[str]:
+        res = git("rev-parse", "--verify", "--quiet", f"v{version}^{{commit}}", cwd=path, check=False) \
+            if (path / ".git").exists() else None
+        return res.stdout.strip() if res is not None and res.returncode == 0 else None
+    base = at_version()
+    if base == head:
+        return None
+    if tree_blobs(path, head) is None:
+        try:
+            sync_item(rec["repo"])
+        except SystemExit:
+            return None
+        base = at_version()
+    old, new = (tree_blobs(path, base) if base else None), tree_blobs(path, head)
+    if base == head or old is None or new is None:
+        return None
+    local = local_blobs(cfg, rec["kind"], src, dry_run)
+    # what your copy doesn't have yet (a push that kept the version is taken once); bundled skills sync on their own
+    theirs = {f: w for f, w in diff_blobs(old, new).items() if local.get(f) != new.get(f) and f != SKILLS_MANIFEST}
+    if not theirs:
+        return None
+    yours = {f: w for f, w in diff_blobs(old, local).items() if local.get(f) != new.get(f)}
+    by = git("log", "--format=%an", f"{base}..{head}", cwd=path, check=False).stdout.splitlines()
+    return {"theirs": theirs, "yours": yours, "base": base, "head": head,
+            "conflicts": sorted(theirs.keys() & yours.keys()), "by": sorted(set(filter(None, by)), key=str.lower)}
+
+
+def take_remote(rec: dict, src: Path, change: dict) -> None:
+    """Bring what changed on GitHub (remote_changes, no conflicts) into your local copy; memory kept outside
+    the item goes back to its place under your home too."""
+    path = REPOS_CACHE / rec["repo"]
+    for rel, what in sorted(change["theirs"].items()):
+        targets = [src / rel] + ([Path.home() / rel[len(MEMORY_DIR) + 1:]] if rel.startswith(MEMORY_DIR + "/") else [])
+        data = None if what == "removed" else \
+            subprocess.run(["git", "show", f"{change['head']}:{rel}"], cwd=path, capture_output=True).stdout
+        for target in targets:
+            if data is None:
+                target.unlink(missing_ok=True)
+            else:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+    log = subprocess.run(["git", "show", f"{change['head']}:{core.CHANGELOG}"], cwd=path, capture_output=True)
+    if log.returncode == 0:
+        (src / core.CHANGELOG).write_bytes(log.stdout)
 
 
 def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, about: Optional[str],
@@ -958,7 +1137,7 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
     last = old_log["entries"][0]["version"] if old_log["entries"] else None
     if not changed and not about:
         ok(f"{name} v{last} is already up to date.")
-        set_folder(repo, folder)
+        set_folder(repo, folder, cfg)
         return
     version = core.bump(last, part)
     while version in versions(path):
@@ -999,7 +1178,8 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
     if log["about"]:
         core.gh("repo", "edit", repo, "--description", log["about"][:340])
     core.gh("repo", "edit", repo, "--add-topic", ",".join(system_topics(kind)))
-    set_folder(repo, folder)
+    remember_mine(cfg, repo, system_topics(kind))
+    set_folder(repo, folder, cfg)
     shutil.copy2(path / core.CHANGELOG, src / core.CHANGELOG)  # your copy now knows its version
     ok(f"Published {name} v{version} → https://github.com/{repo}")
     if log["about"]:
@@ -1028,7 +1208,7 @@ def review_memory(kind: str, src: Path, repo: str, files: List[str], dry_run: bo
         die(f"Nothing published for {src.name}.")
 
 
-def set_folder(repo: str, folder: Optional[str]) -> None:
+def set_folder(repo: str, folder: Optional[str], cfg: Optional[dict] = None) -> None:
     """Put an item in a folder (a GitHub topic); '' or '.' takes it out of any folder."""
     if folder is None:
         return
@@ -1041,6 +1221,8 @@ def set_folder(repo: str, folder: Optional[str]) -> None:
         core.gh("repo", "edit", repo, "--remove-topic", ",".join(old))
     if new:
         core.gh("repo", "edit", repo, "--add-topic", new)
+    if cfg:
+        remember_mine(cfg, repo, [t for t in current if t.startswith("skylls")] + ([new] if new else []), folder=True)
     ok(f"{repo.split('/')[1]}: {'folder ' + new if new else 'no folder'}")
 
 
@@ -1437,8 +1619,8 @@ def installed_version(path: Path) -> Optional[str]:
 def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, yes: bool = False,
              keep_memory: bool = False) -> None:
     """Publish what changed in your published items, then install newer versions of what friends shared."""
-    published, updated, failed, unchanged_ = [], [], [], 0
-    section("Listing your items and your friends' on GitHub (unchanged ones are read on this computer)")
+    published, updated, failed, taken, unchanged_ = [], [], [], [], 0
+    section("Checking what friends shared with you on GitHub (your items are read on this computer)")
     mine_ = [r for r in catalog(cfg, local=True) if r["mine"]]
     section(f"Publishing your changes ({len(mine_)} published items)")
     for i, r in enumerate(mine_):
@@ -1446,6 +1628,26 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
         src = local_original(cfg, r["kind"], r["name"])
         if not src:
             continue
+        change = remote_changes(cfg, r, src, dry_run)
+        if change:
+            core.progress_clear()
+            what = f"{one(r['kind'])} {r['name']}"
+            by = ", ".join(change["by"]) or "someone"
+            if change["conflicts"]:
+                warn(f"{what}: {by} changed it on GitHub and you changed the same files here: "
+                     f"{', '.join(change['conflicts'][:5])}{' …' if len(change['conflicts']) > 5 else ''}")
+                info(f"Not synced. Their version: {home_path(REPOS_CACHE / r['repo'])}. Merge by hand, then "
+                     f"skylls{cmd_prefix(r['kind'])} push {r['name']} (it publishes your copy as it is).")
+                failed.append(what)
+                continue
+            n = len(change["theirs"])
+            if dry_run:
+                info(f"{what}: would take {n} file{'s' if n != 1 else ''} {by} changed on GitHub")
+                continue
+            take_remote(r, src, change)
+            ok(f"{what}: took {n} file{'s' if n != 1 else ''} {by} changed on GitHub")
+            taken.append(f"{what} ({by})")
+            r = {**r, "head": change["head"]}  # what is left to publish is yours
         if unchanged(cfg, r, src, dry_run):
             unchanged_ += 1
             continue
@@ -1474,12 +1676,14 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
         updated.append(f"{one(kind)} {item.name} v{r['version']}")
     section("Sync done" + (" (dry run)" if dry_run else ""))
     if not dry_run:
+        if taken:
+            ok(f"Taken from GitHub: {', '.join(taken)}")
         ok(f"Published: {', '.join(published) or 'nothing changed'}")
     ok(f"Updated from friends: {', '.join(updated) or 'everything is up to date'}")
     if failed:
         warn(f"Not synced (see above): {', '.join(failed)}")
     if core.JSON_MODE:
-        emit({"published": published, "updated": updated, "failed": failed})
+        emit({"published": published, "updated": updated, "taken": taken, "failed": failed})
 
 
 VIEW_FILES = 8  # files listed per item by view
@@ -1496,11 +1700,14 @@ def cmd_view(cfg: dict) -> None:
     """view: what sync would publish and install, and why, without changing anything (no scan)."""
     section("Reading your items and your friends' from GitHub")
     mine_ = [r for r in catalog(cfg) if r["mine"]]
-    changed, unknown, same, absent = [], [], 0, 0
+    changed, unknown, theirs, same, absent = [], [], [], 0, 0
     for i, r in enumerate(mine_):
         core.progress(i, len(mine_), f"{one(r['kind'])} {r['name']}")
         src = local_original(cfg, r["kind"], r["name"])
-        diff = local_changes(cfg, r, src, True, fetch=True) if src else {}
+        change = remote_changes(cfg, r, src, True) if src else None
+        if change:
+            theirs.append((r, src, change))
+        diff = change["yours"] if change else local_changes(cfg, r, src, True, fetch=True) if src else {}
         if not src:
             absent += 1
         elif diff is None:
@@ -1513,8 +1720,18 @@ def cmd_view(cfg: dict) -> None:
     core.progress_done()
     remote = [r for r in catalog(cfg) if not mark_installed(cfg, r["kind"], dict(r))["installed"]
               and not (r["mine"] and local_original(cfg, r["kind"], r["name"]))]
-    section(f"Yours, changed since their last version ({len(changed)}): sync publishes them")
     marks = {"new": f"{GREEN}+{NC}", "changed": f"{YELLOW}~{NC}", "removed": f"{YELLOW}-{NC}"}
+    if theirs:
+        section(f"Yours, changed on GitHub by someone else ({len(theirs)}): sync brings that into your copy")
+    for r, src, change in theirs:
+        say(f"  {GREEN}•{NC} {one(r['kind'])} {CYAN}{r['name']}{NC} by {', '.join(change['by']) or 'someone'}  "
+            f"{home_path(src)}")
+        for f in sorted(change["theirs"])[:VIEW_FILES]:
+            say(f"      {marks[change['theirs'][f]]} {f}" + (f"  {YELLOW}! you changed it too: not synced{NC}"
+                                                             if f in change["conflicts"] else ""))
+        if len(change["theirs"]) > VIEW_FILES:
+            say(f"      … and {len(change['theirs']) - VIEW_FILES} more")
+    section(f"Yours, changed since their last version ({len(changed)}): sync publishes them")
     for r, src, diff in changed:
         counts = ", ".join(f"{n} {w}" for w in marks if (n := sum(1 for v in diff.values() if v == w)))
         say(f"  {GREEN}•{NC} {one(r['kind'])} {CYAN}{r['name']}{NC} v{r['version']}  {home_path(src)}  ({counts})")
@@ -1544,7 +1761,9 @@ def cmd_view(cfg: dict) -> None:
     view_remote(remote)
     info("Nothing was changed. Run skylls sync to do it (each publish is scanned for secrets first).")
     if core.JSON_MODE:
-        emit({"publish": [{"kind": r["kind"], "name": r["name"], "version": r["version"], "path": str(src),
+        emit({"from_github": [{"kind": r["kind"], "name": r["name"], "path": str(src), "by": c["by"],
+                                "files": c["theirs"], "conflicts": c["conflicts"]} for r, src, c in theirs],
+              "publish": [{"kind": r["kind"], "name": r["name"], "version": r["version"], "path": str(src),
                            "files": diff} for r, src, diff in changed],
               "update": [{"kind": kind, "name": r["name"], "path": str(path), "version": have,
                           "newer": r["version"], "owner": r["owner"]} for kind, path, r, have in updates],
@@ -1887,7 +2106,7 @@ def cmd_move(cfg: dict, kind: str, name: str, folder: str, dry_run: bool) -> Non
     if dry_run:
         info(f"Would put {r['repo']} in folder '{folder}'")
         return
-    set_folder(r["repo"], folder)
+    set_folder(r["repo"], folder, cfg)
 
 
 def cmd_folder(cfg: dict, action: Optional[str], names: List[str], dry_run: bool) -> None:
@@ -1912,7 +2131,7 @@ def cmd_folder(cfg: dict, action: Optional[str], names: List[str], dry_run: bool
         if dry_run:
             info(f"Would move {r['repo']} → {new}")
         else:
-            set_folder(r["repo"], new)
+            set_folder(r["repo"], new, cfg)
 
 
 # ── Suggestions ────────────────────────────────────────────────────────────

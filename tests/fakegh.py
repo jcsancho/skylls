@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(os.environ["GHROOT"])
@@ -50,10 +51,18 @@ def head(full):
     return {"target": {"oid": res.stdout.strip()}} if res.returncode == 0 else None
 
 
+def pushed_at(full):
+    """GitHub's pushedAt, here the time of the newest commit on any branch (UTC)."""
+    res = subprocess.run(["git", "--git-dir", str(ROOT / f"{full}.git"), "log", "-1", "--all", "--format=%ct"],
+                         capture_output=True, text=True)
+    stamp = int(res.stdout.strip() or 0)
+    return datetime.fromtimestamp(stamp, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def node(full):
     r = state["repos"][full]
     owner, name = full.split("/")
-    return {"name": name, "owner": {"login": owner}, "isPrivate": r["private"], "pushedAt": "", "defaultBranchRef": head(full), "url": f"https://github.com/{full}",
+    return {"name": name, "owner": {"login": owner}, "isPrivate": r["private"], "pushedAt": pushed_at(full), "defaultBranchRef": head(full), "url": f"https://github.com/{full}",
             "repositoryTopics": {"nodes": [{"topic": {"name": t}} for t in r["topics"]]},
             "changelog": show(full, "CHANGELOG.md"), "skillmd": show(full, "SKILL.md"),
             "claudemd": show(full, "CLAUDE.md"), "agentsmd": show(full, "AGENTS.md"),
@@ -95,11 +104,21 @@ if args[:1] == ["api"]:
              for o, spec in state["orgs"].items() if ME in spec["admins"]])
     elif path == "graphql":
         query = next(a for a in args if a.startswith("query="))[6:]
-        if "viewer" in query:
+        if "repositoryOwner" in query:  # one owner's repos, last pushed first
+            login = next((a.split("=", 1)[1] for a in args if a.startswith("-flogin=")), "")
+            fields = ("name", "owner", "isPrivate", "pushedAt", "defaultBranchRef", "repositoryTopics")
+            nodes = sorted(({k: v for k, v in node(f).items() if k in fields}
+                            for f in state["repos"] if f.split("/")[0] == login and can_see(f)),
+                           key=lambda n: n["pushedAt"], reverse=True)
+            out({"data": {"repositoryOwner": {"repositories": {"nodes": nodes, "pageInfo": {"hasNextPage": False,
+                                                                                              "endCursor": None}}}}})
+        elif "viewer" in query:
             orgs_too = re.search(r"ownerAffiliations:[^)]*ORGANIZATION_MEMBER", query)  # GitHub's default leaves org repos out
-            nodes = [{k: v for k, v in node(f).items() if k in ("name", "owner", "isPrivate", "defaultBranchRef",
-                                                                 "repositoryTopics")}
-                     for f in state["repos"] if can_see(f) and (orgs_too or f.split("/")[0] not in state["orgs"])]
+            shared_only = re.search(r"affiliations: \[COLLABORATOR\]", query)  # repos others shared with me
+            nodes = [{k: v for k, v in node(f).items() if k in ("name", "owner", "isPrivate", "pushedAt",
+                                                                 "defaultBranchRef", "repositoryTopics")}
+                     for f in state["repos"] if can_see(f) and (orgs_too or f.split("/")[0] not in state["orgs"])
+                     and not (shared_only and can_admin(f.split("/")[0]))]
             out({"data": {"viewer": {"repositories": {"nodes": nodes, "pageInfo": {"hasNextPage": False, "endCursor": None}}}}})
         else:
             data = {}

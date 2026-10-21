@@ -111,7 +111,10 @@ skylls sync -m "Small fixes"        # publish every published item you changed (
                                     # of skills, agents and swarms friends shared with you
                                     # (no -m: never asks; the log lists the changed files;
                                     # --keep-memory: keep your agents'/swarms' memory as it is;
-                                    # unchanged items are checked on this computer, not GitHub)
+                                    # unchanged items are checked on this computer, not GitHub;
+                                    # only the repos friends shared are listed there; changes
+                                    # others pushed to your items, e.g. a friend with write
+                                    # access, are copied into yours first)
 skylls view                         # only list what sync would publish (with the changed files)
                                     # and which newer versions it would install, plus what is on
                                     # GitHub but not on this computer; changes nothing
