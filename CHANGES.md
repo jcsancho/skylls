@@ -3,6 +3,18 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.15.0 — 2026-10-22
+
+- **`sync` installs what friends newly shared with you**: skills globally (for
+  your agent CLIs), agents and swarms into your folders. It remembers what it
+  has seen (`~/.cache/skylls/seen.json`), so an item you remove isn't brought
+  back; the first sync installs only shares it (or `source add`) accepts, and
+  points to `skylls view` for older ones.
+- **`sync` and `view` list shares waiting for you**: items people who aren't
+  your sources yet shared with you, with the GitHub invitation link and the
+  command that accepts them (`skylls source add <owner>`); the next sync then
+  installs them. `view` also lists what sync would install as new.
+
 ## 1.14.0 — 2026-10-21
 
 - **`sync` no longer asks about memory notes**: it publishes your changed

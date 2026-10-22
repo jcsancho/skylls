@@ -113,11 +113,12 @@ if args[:1] == ["api"]:
             out({"data": {"repositoryOwner": {"repositories": {"nodes": nodes, "pageInfo": {"hasNextPage": False,
                                                                                               "endCursor": None}}}}})
         elif "viewer" in query:
-            orgs_too = re.search(r"ownerAffiliations:[^)]*ORGANIZATION_MEMBER", query)  # GitHub's default leaves org repos out
+            orgs_too = re.search(r"ownerAffiliations:[^)]*ORGANIZATION_MEMBER", query)  # org repos you see as a member, not as an outside collaborator
             shared_only = re.search(r"affiliations: \[COLLABORATOR\]", query)  # repos others shared with me
             nodes = [{k: v for k, v in node(f).items() if k in ("name", "owner", "isPrivate", "pushedAt",
                                                                  "defaultBranchRef", "repositoryTopics")}
-                     for f in state["repos"] if can_see(f) and (orgs_too or f.split("/")[0] not in state["orgs"])
+                     for f in state["repos"] if can_see(f) and (orgs_too or f.split("/")[0] not in state["orgs"]
+                                                                or ME in state["repos"][f]["collabs"])
                      and not (shared_only and can_admin(f.split("/")[0]))]
             out({"data": {"viewer": {"repositories": {"nodes": nodes, "pageInfo": {"hasNextPage": False, "endCursor": None}}}}})
         else:

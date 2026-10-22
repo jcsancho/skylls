@@ -143,6 +143,14 @@ python3 -c "import json;s=json.load(open('$GHROOT/state.json'));print('  bob on 
 echo "--- alice follows carol the person: carol's organization comes along"; user carol; s share tax @alice | grep -E "Invited"
 user alice; s source add carol | grep Added; s list | grep -E "carolco|tax"
 python3 -c "import json;print('  alice friends:', json.load(open('$HOME/.config/skylls/config.json'))['friends'])"
+echo "--- sync installs what friends newly shared; shares from others wait to be accepted"; user carol
+mkskill vat "VAT helper" "VAT."; s push vat -m first --skip-scan >/dev/null; s share vat @bob >/dev/null
+user eve; s setup --agents claude --no-agent-skill >/dev/null; mkskill hello "Says hello" "Hi."
+s push hello -m first --skip-scan >/dev/null; s share hello @bob >/dev/null
+user bob; s view | grep -E "New from friends|waiting|^  • skill (vat|tax|hello)|source add eve"
+s sync | grep -E "New from friends|Installed|waiting|hello|source add eve"; ls $HOME/.claude/skills | paste -sd' ' -
+s remove vat -g >/dev/null; s source add eve | grep -E "Added|sync installs"
+s sync | grep -E "New from friends|Installed new"; ls $HOME/.claude/skills | paste -sd' ' -
 
 echo "######## PULL REQUESTS: bob proposes a change to alice's swarm, alice reviews and accepts"; user alice
 s swarms share apps @bob | grep -E "Invited|Pull requests from them are off"

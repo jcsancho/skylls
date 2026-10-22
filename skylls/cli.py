@@ -666,7 +666,7 @@ Every item you publish gets its own private GitHub repo; you share item by item.
   {GREEN}log{NC} <name> [--from O]              Who made it, versions, what changed
   {GREEN}installed{NC} [-g] [-a A]              Installed skills (and newer versions)
   {GREEN}pull{NC} [--update]                    Check for new versions (--update: install them)
-  {GREEN}sync{NC} [-m msg]                      Publish your changes + get friends' new versions
+  {GREEN}sync{NC} [-m msg]                      Publish your changes + get friends' new versions and shares
   {GREEN}view{NC}                               What sync would do, and what's on GitHub but not here
   {GREEN}remove{NC} <name>                      Remove from this computer (agents/swarms: to the Trash)
   {GREEN}search{NC} <query>                     Public skills on skills.sh (add owner/repo/skill)
@@ -763,7 +763,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("source", help="Friends whose shared items you see.")
     sp.add_argument("action", nargs="?", choices=["add", "remove"])
     sp.add_argument("owner", nargs="?")
-    sp = sub.add_parser("sync", help="Publish your changes, then install newer versions of what friends shared.")
+    sp = sub.add_parser("sync", help="Publish your changes, then install newer versions and new shares from friends.")
     sp.add_argument("-m", "--message", help="What changed (logged with each new version; asked if omitted).")
     sp.add_argument("--skip-scan", action="store_true", help="Publish without the secret scan.")
     sp.add_argument("-y", "--yes", action="store_true", help="Publish new memory notes without asking.")

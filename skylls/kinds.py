@@ -46,6 +46,7 @@ from skylls.cli import BLUE, CYAN, GREEN, NC, YELLOW, die, emit, fail, git, info
 
 REPOS_CACHE = Path.home() / ".cache" / "skylls" / "repos"
 MINE_INDEX = Path.home() / ".cache" / "skylls" / "mine.json"  # your item repos, so sync needn't list them
+SEEN_INDEX = Path.home() / ".cache" / "skylls" / "seen.json"  # friends' items sync has seen: it installs new ones
 MAX_FILE = 5 * 1024 * 1024  # files bigger than this are not shared (agents/swarms/memory)
 KINDS = {
     "skills": {"one": "skill", "main": ("SKILL.md",)},
@@ -326,13 +327,14 @@ def read_items(chunk: List[str]) -> dict:
             **{f"b{k}": v for k, v in read_items(chunk[half:]).items()}}
 
 
-def accept_invites(owners: set) -> Tuple[int, Dict[str, List[dict]], set]:
-    """Accept pending invites to skylls repos from these owners (or sent by them); list the others by owner.
+def accept_invites(owners: set) -> Tuple[List[str], Dict[str, List[dict]], set]:
+    """Accept pending invites to skylls repos from these owners (or sent by them): the accepted repos; list the
+    others by owner.
     Also returns the new owners (a friend's organization) of repos accepted because a friend sent the invite."""
     invites = gh_json(core.gh_api("user/repository_invitations", "--paginate")) or []
     if not isinstance(invites, list):          # an error answer (rate limit, network) is a dict, not a list
         invites = []
-    accepted, waiting, new_owners = 0, {}, set()
+    accepted, waiting, new_owners = [], {}, set()
     for inv in invites:
         if not isinstance(inv, dict):
             continue
@@ -343,7 +345,7 @@ def accept_invites(owners: set) -> Tuple[int, Dict[str, List[dict]], set]:
         inviter = (inv.get("inviter") or {}).get("login", "")
         if owner.lower() in owners or inviter.lower() in owners:
             if core.gh_api("-X", "PATCH", f"user/repository_invitations/{inv['id']}").returncode == 0:
-                accepted += 1
+                accepted.append(repo)
                 if owner.lower() not in owners:
                     new_owners.add(owner)
         else:
@@ -457,8 +459,11 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
             core.save_config(cfg)
             owners |= {o.lower() for o in new_owners}
         if accepted:
-            ok(f"Accepted {accepted} new share{'s' if accepted != 1 else ''} from your friends.")
+            ok(f"Accepted {len(accepted)} new share{'s' if len(accepted) != 1 else ''} from your friends.")
         _catalog["waiting"] = waiting
+        if accepted:  # sync installs them, also when another command (source add) accepted them
+            seen = load_seen()
+            save_seen(seen["repos"], seen["accepted"] | {r.lower() for r in accepted})
         for who, n in ((w, len(items)) for w, items in waiting.items() if not quiet):
             info(f"@{who} shared {n} item{'s' if n != 1 else ''} with you: skylls source add {who}")
         known_mine = load_mine(cfg, pushed=True) if local else None
@@ -486,6 +491,7 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
         repos = list(nodes)
         wanted = [r for r in repos if item_of(r) and r.split("/")[0].lower() in owners]
         unknown = sorted({r.split("/")[0] for r in repos if item_of(r)} - {r.split("/")[0] for r in wanted})
+        _catalog["unknown"] = unknown
         for who in ([] if quiet else unknown):  # shared earlier (already accepted) by someone not a source
             info(f"{who} may have shared skylls items with you: skylls source add {who}")
         records_ = []
@@ -1625,7 +1631,7 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
     """Publish what changed in your published items, then install newer versions of what friends shared."""
     published, updated, failed, taken, unchanged_ = [], [], [], [], 0
     section("Checking what friends shared with you on GitHub (your items are read on this computer)")
-    mine_ = [r for r in catalog(cfg, local=True) if r["mine"]]
+    mine_ = [r for r in catalog(cfg, local=True, quiet=True) if r["mine"]]
     section(f"Publishing your changes ({len(mine_)} published items)")
     for i, r in enumerate(mine_):
         core.progress(i, len(mine_), f"{one(r['kind'])} {r['name']}")
@@ -1678,16 +1684,98 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
             failed.append(f"{one(kind)} {item.name}")
             continue
         updated.append(f"{one(kind)} {item.name} v{r['version']}")
+    installed, not_installed = install_new_shares(cfg, dry_run)
+    failed += not_installed
+    show_waiting(cfg)
     section("Sync done" + (" (dry run)" if dry_run else ""))
     if not dry_run:
         if taken:
             ok(f"Taken from GitHub: {', '.join(taken)}")
         ok(f"Published: {', '.join(published) or 'nothing changed'}")
     ok(f"Updated from friends: {', '.join(updated) or 'everything is up to date'}")
+    if installed:
+        ok(f"{'Would install' if dry_run else 'Installed'} new from friends: {', '.join(installed)}")
+    waiting = sum(len(w) for w in _catalog.get("waiting", {}).values())
+    if waiting:
+        warn(f"{waiting} shared with you, waiting for you to accept (see above)")
     if failed:
         warn(f"Not synced (see above): {', '.join(failed)}")
     if core.JSON_MODE:
-        emit({"published": published, "updated": updated, "taken": taken, "failed": failed})
+        emit({"published": published, "updated": updated, "taken": taken, "failed": failed, "installed": installed,
+              "waiting": [w for ws in _catalog.get("waiting", {}).values() for w in ws]})
+
+
+def load_seen() -> dict:
+    """SEEN_INDEX: friends' repos sync has seen (None before the first sync) and those accepted since."""
+    try:
+        seen = json.loads(SEEN_INDEX.read_text())
+        return {"repos": set(seen["repos"]) if seen.get("repos") is not None else None,
+                "accepted": set(seen.get("accepted") or [])}
+    except (OSError, ValueError, KeyError, TypeError):
+        return {"repos": None, "accepted": set()}
+
+
+def save_seen(repos: Optional[set], accepted: set) -> None:
+    SEEN_INDEX.parent.mkdir(parents=True, exist_ok=True)
+    SEEN_INDEX.write_text(json.dumps({"repos": sorted(repos) if repos is not None else None,
+                                      "accepted": sorted(accepted)}, indent=1))
+
+
+def new_shares(cfg: dict) -> Tuple[List[dict], int]:
+    """Friends' items shared with you since the last sync and not on this computer (before the first sync:
+    only those accepted), and how many older ones aren't installed."""
+    seen = load_seen()
+    absent = [r for r in catalog(cfg) if not r["mine"] and r["repo"].lower() not in (seen["repos"] or set())
+              and not mark_installed(cfg, r["kind"], dict(r))["installed"]]
+    new = [r for r in absent if seen["repos"] is not None or r["repo"].lower() in seen["accepted"]]
+    return new, len(absent) - len(new)
+
+
+def install_new_shares(cfg: dict, dry_run: bool) -> Tuple[List[str], List[str]]:
+    """sync: install what friends newly shared with you (skills globally): (installed, failed).
+    It remembers what it has seen (SEEN_INDEX), so an item you remove later doesn't come back."""
+    new, older = new_shares(cfg)
+    section(f"New from friends ({len(new)}): installing them")
+    installed, failed, retry = [], [], set()
+    for r in new:
+        what = f"{one(r['kind'])} {r['name']}{' v' + r['version'] if r['version'] else ''} from {r['owner']}"
+        try:
+            if r["kind"] == "skills":
+                cmd_add_skill(cfg, r["name"], r["owner"], None, True, False, dry_run)
+            else:
+                cmd_add_item(cfg, r["kind"], r["name"], r["owner"], None, False, False, dry_run)
+        except SystemExit:  # tried again next sync
+            failed.append(what)
+            retry.add(r["repo"].lower())
+            continue
+        installed.append(what)
+    if not new:
+        ok("Nothing new shared with you.")
+    if older:
+        info(f"{older} shared with you earlier {'is' if older == 1 else 'are'} not installed: skylls view lists them")
+    if not dry_run:
+        seen = load_seen()
+        save_seen(((seen["repos"] or set()) | {r["repo"].lower() for r in catalog(cfg) if not r["mine"]}) - retry,
+                  seen["accepted"] & retry)
+    return installed, failed
+
+
+def show_waiting(cfg: dict) -> None:
+    """sync/view: shares you haven't accepted yet (people who aren't your sources) and how to accept them."""
+    waiting, unknown = _catalog.get("waiting", {}), _catalog.get("unknown", [])
+    if not waiting and not unknown:
+        return
+    n = sum(len(w) for w in waiting.values())
+    section(f"Shared with you, waiting for you to accept ({n})")
+    for owner in sorted(waiting, key=str.lower):
+        for w in waiting[owner]:
+            when = f", invited {w['invited']}" if w.get("invited") else ""
+            say(f"  {YELLOW}•{NC} {one(w['kind'])} {CYAN}{w['name']}{NC} from {CYAN}@{w['inviter'] or owner}{NC}{when}"
+                f"  (https://github.com/{w['repo']}/invitations)")
+        info(f"Accept {owner}'s shares on GitHub with: skylls source add {owner}  (then skylls sync installs them, "
+             "and later shares from them are accepted by themselves)")
+    for who in unknown:  # accepted on GitHub, but not one of your sources
+        info(f"{who} may have shared skylls items with you: skylls source add {who}, then skylls sync installs them")
 
 
 VIEW_FILES = 8  # files listed per item by view
@@ -1703,7 +1791,7 @@ def home_path(path: Path) -> str:
 def cmd_view(cfg: dict) -> None:
     """view: what sync would publish and install, and why, without changing anything (no scan)."""
     section("Reading your items and your friends' from GitHub")
-    mine_ = [r for r in catalog(cfg) if r["mine"]]
+    mine_ = [r for r in catalog(cfg, quiet=True) if r["mine"]]
     changed, unknown, theirs, same, absent = [], [], [], 0, 0
     for i, r in enumerate(mine_):
         core.progress(i, len(mine_), f"{one(r['kind'])} {r['name']}")
@@ -1762,7 +1850,14 @@ def cmd_view(cfg: dict) -> None:
             say(f"      {YELLOW}!{NC} a copy of {r['name']} under another name: sync updates it too")
     if not updates:
         ok("Nothing: everything is up to date.")
-    view_remote(remote)
+    new, _ = new_shares(cfg)
+    section(f"New from friends ({len(new)}): sync installs them")
+    for r in new:
+        say(f"  {GREEN}•{NC} {one(r['kind'])} {CYAN}{r['name']}{NC} {BLUE}v{r['version']}{NC}  (from {r['owner']})")
+    if not new:
+        ok("Nothing new shared with you.")
+    show_waiting(cfg)
+    view_remote([r for r in remote if r not in new])
     info("Nothing was changed. Run skylls sync to do it (each publish is scanned for secrets first).")
     if core.JSON_MODE:
         emit({"from_github": [{"kind": r["kind"], "name": r["name"], "path": str(src), "by": c["by"],
@@ -1772,6 +1867,8 @@ def cmd_view(cfg: dict) -> None:
               "update": [{"kind": kind, "name": r["name"], "path": str(path), "version": have,
                           "newer": r["version"], "owner": r["owner"]} for kind, path, r, have in updates],
               "unchanged": same, "not_local": absent, "unknown": unknown,
+              "new": [{k: r.get(k) for k in ("kind", "name", "owner", "version")} for r in new],
+              "waiting": [w for ws in _catalog.get("waiting", {}).values() for w in ws],
               "not_installed": [{k: r.get(k) for k in ("kind", "name", "owner", "version", "summary")}
                                 for r in remote]})
 
@@ -2093,6 +2190,8 @@ def cmd_source(cfg: dict, action: Optional[str], owner: Optional[str], dry_run: 
                 counts[r["kind"]] = counts.get(r["kind"], 0) + 1
         ok(f"Added {owner}: " + (", ".join(f"{n} {k}" for k, n in counts.items()) or
                                   "nothing shared with you yet (it appears once they share)"))
+        if counts:
+            info("skylls sync installs what they newly shared (skills globally)")
     else:
         if owner.lower() not in {f.lower() for f in friends}:
             die(f"{owner} is not one of your sources.")
