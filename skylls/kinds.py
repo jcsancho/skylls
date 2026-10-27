@@ -1147,7 +1147,7 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
             existing.unlink()
     for rel in files:
         place(rel, path)
-    git("add", "-A", cwd=path)
+    git("add", "-A", "--force", cwd=path)  # skylls picked the files; the item's .gitignore must not drop them
     status = git("status", "--porcelain", cwd=path).stdout.splitlines()
     changed = bool(status)
     last = old_log["entries"][0]["version"] if old_log["entries"] else None
@@ -1180,7 +1180,7 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
     log["source"] = log["memory"] = ""
     log["entries"] = [{"version": version, "date": today, "author": me, "notes": notes}] + log["entries"]
     core.write_changelog(path, name, log)
-    git("add", "-A", cwd=path)
+    git("add", "-A", "--force", cwd=path)  # skylls picked the files; the item's .gitignore must not drop them
     res = git("commit", "--quiet", "-m", f"{name} {version}: {notes.splitlines()[0]}", cwd=path, check=False)
     if res.returncode != 0:
         die("Could not commit. Set your git name and email:\n"
@@ -2377,7 +2377,7 @@ def stage_proposal(kind: str, item: Path, work: Path, skip: List[str]) -> List[s
             pass
         (work / rel).parent.mkdir(parents=True, exist_ok=True)
         (work / rel).write_bytes(data)
-    git("add", "-A", cwd=work)
+    git("add", "-A", "--force", cwd=work)
     return git("status", "--porcelain", cwd=work).stdout.splitlines()
 
 

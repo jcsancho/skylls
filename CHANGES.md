@@ -3,6 +3,12 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.16.2 — 2026-10-27
+
+- **An item's own `.gitignore` no longer drops files from a publish** (or a
+  `propose`): skylls already picks what is shared, so it force-adds them. The
+  superintel videos were skipped this way.
+
 ## 1.16.1 — 2026-10-27
 
 - **The secret scan skips binary files** (videos, images): gitleaks read random
