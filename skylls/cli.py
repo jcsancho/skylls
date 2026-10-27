@@ -430,6 +430,15 @@ def is_false_positive(finding: dict, lines: List[str]) -> bool:
     return False
 
 
+def is_binary(path: Path) -> bool:
+    """Videos, images and other binaries: gitleaks reads random bytes in them as emails and keys."""
+    try:
+        with path.open("rb") as f:
+            return b"\0" in f.read(8192)
+    except OSError:
+        return False
+
+
 def file_lines(path: Path, cache: dict) -> List[str]:
     if path not in cache:
         try:
@@ -462,6 +471,7 @@ def scan_secrets(folder: Path) -> None:
         if result.returncode != 0 or not report.is_file():
             die(f"gitleaks failed: {(result.stderr or result.stdout).strip()}")
         findings = json.loads(report.read_text() or "[]")
+    findings = [f for f in findings if not is_binary(Path(f.get("File", "")))]
     examples = [f for f in findings if is_placeholder(f.get("Match", ""))]
     findings = [f for f in findings if f not in examples]
     cache: dict = {}

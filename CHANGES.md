@@ -3,6 +3,11 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.16.1 — 2026-10-27
+
+- **The secret scan skips binary files** (videos, images): gitleaks read random
+  bytes in them as email addresses and stopped the publish.
+
 ## 1.16.0 — 2026-10-27
 
 - **Files up to 100 MB are shared** (was 5 MB), so videos and other media in an
