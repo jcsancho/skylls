@@ -47,7 +47,7 @@ from skylls.cli import BLUE, CYAN, GREEN, NC, YELLOW, die, emit, fail, git, info
 REPOS_CACHE = Path.home() / ".cache" / "skylls" / "repos"
 MINE_INDEX = Path.home() / ".cache" / "skylls" / "mine.json"  # your item repos, so sync needn't list them
 SEEN_INDEX = Path.home() / ".cache" / "skylls" / "seen.json"  # friends' items sync has seen: it installs new ones
-MAX_FILE = 5 * 1024 * 1024  # files bigger than this are not shared (agents/swarms/memory)
+MAX_FILE = 100 * 1024 * 1024  # GitHub rejects bigger files: not shared (agents/swarms/memory), publish lists them
 KINDS = {
     "skills": {"one": "skill", "main": ("SKILL.md",)},
     "agents": {"one": "agent", "main": ("CLAUDE.md", "AGENTS.md", "GEMINI.md")},
@@ -746,8 +746,11 @@ def shareable(kind: str, rel: str, rules: List[str], size: int = 0, memory: Tupl
     return keep
 
 
+TOO_BIG: Dict[str, List[str]] = {}  # item folder → files local_files left out only for their size
+
+
 def local_files(kind: str, item: Path) -> List[str]:
-    """Shareable files of a local item, as paths relative to it."""
+    """Shareable files of a local item, as paths relative to it (those over MAX_FILE go to TOO_BIG)."""
     ignore = item / ".skyllsignore"
     rules = parse_rules(ignore.read_text(errors="ignore")) if ignore.is_file() else []
     prune = {".git", "node_modules", ".venv", "venv", "__pycache__"}
@@ -755,7 +758,7 @@ def local_files(kind: str, item: Path) -> List[str]:
         prune |= RUNTIME_DIRS
     memory = tuple(local_memory_dirs(item)) if kind != "skills" else ()
     scripts = referenced_scripts(item) if kind == "swarms" else frozenset()
-    out = []
+    out, too_big = [], []
     for dirpath, dirnames, filenames in os.walk(item):
         top = Path(dirpath).relative_to(item).parts[:1]
         in_memory = bool(top) and (top[0] == MEMORY_DIR or top[0] in memory)
@@ -767,8 +770,12 @@ def local_files(kind: str, item: Path) -> List[str]:
             rel = path.relative_to(item).as_posix()
             if in_memory and private_note(path):
                 continue
-            if shareable(kind, rel, rules, path.stat().st_size, memory, scripts):
+            size = path.stat().st_size
+            if shareable(kind, rel, rules, size, memory, scripts):
                 out.append(rel)
+            elif size > MAX_FILE and shareable(kind, rel, rules, 0, memory, scripts):
+                too_big.append(rel)
+    TOO_BIG[str(item)] = sorted(too_big)
     return sorted(out)
 
 
@@ -1095,6 +1102,9 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
         if inner:
             info(f"Memory in the folder: {', '.join(d + '/' for d in inner)}")
     files = [f for f in local_files(kind, src) if f not in (core.CHANGELOG, SKILLS_MANIFEST)]
+    if TOO_BIG.get(str(src)):
+        warn(f"Not shared, over GitHub's {MAX_FILE // 1024 // 1024} MB limit per file (share them another way, "
+             "e.g. a Drive link): " + ", ".join(TOO_BIG[str(src)]))
     bundled = bundled_skills(cfg, files) if kind != "skills" else {}
     if bundled:
         files = [f for f in files if not any(f.startswith(d + "/") for d in bundled)] + [SKILLS_MANIFEST]

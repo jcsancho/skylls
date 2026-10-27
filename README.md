@@ -176,7 +176,7 @@ skylls swarms push apps_ideas                # ~/swarms/apps_ideas → <org>/swa
 
 | | published | not published |
 |---|---|---|
-| agent | `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`, `.claude/` (settings, skills, commands), scripts and other files, **its memory folder** | `logs/`, `data/`, `reports/`, `scratch/`, `state/`, caches and venvs, `*.log`, `*.jsonl`, `*_state.json`, databases, `.claude/settings.local.json`, `.env*`, keys, files over 5 MB |
+| agent | `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`, `.claude/` (settings, skills, commands), scripts and other files, **its memory folder** | `logs/`, `data/`, `reports/`, `scratch/`, `state/`, caches and venvs, `*.log`, `*.jsonl`, `*_state.json`, databases, `.claude/settings.local.json`, `.env*`, keys, files over 100 MB (GitHub's limit; publish lists them) |
 | swarm | top-level and per-role `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` and `.claude/`, `.swarm/agents.json`, `.swarm/schedules.json`, **its memory folder** | the roles' work files, reports, `.swarm/bus.jsonl` and other state |
 
 A `.skyllsignore` in the folder adjusts this (one pattern per line,
@@ -195,7 +195,7 @@ it. Other skills in there are published as copies.
   vault (has `.obsidian/`), or is named `memory`, `wiki`, `obsidian` or
   `*-wiki`. All of it is published, except Obsidian's per-user window layout,
   its downloaded plugins and themes (`.obsidian/plugins/`, `.obsidian/themes/`),
-  the trash and files over 5 MB.
+  the trash and files over 100 MB (GitHub's limit; publish lists them).
 - **Private notes stay home:** a note whose frontmatter has `private: true`
   is never published (client names, people, deals). Keep what friends may
   learn from (method, lessons, playbooks) in plain notes; `.skyllsignore`

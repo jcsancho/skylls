@@ -3,6 +3,15 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.16.0 — 2026-10-27
+
+- **Files up to 100 MB are shared** (was 5 MB), so videos and other media in an
+  agent's or swarm's memory folder (e.g. NotebookLM videos in a wiki's
+  `attachments/`) reach friends. 100 MB is GitHub's limit per file. Friends need
+  this version too: installs used the same 5 MB limit.
+- **Publish lists the files it leaves out for being too big**; before, they were
+  skipped silently.
+
 ## 1.15.1 — 2026-10-27
 
 - **Fewer false positives in the secret scan**: it no longer stops a publish
