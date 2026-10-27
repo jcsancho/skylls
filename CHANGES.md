@@ -3,6 +3,18 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.15.1 — 2026-10-27
+
+- **Fewer false positives in the secret scan**: it no longer stops a publish
+  for digit runs inside decimals (SVG coordinates, timings like
+  `3.345384359359741`) or non-Luhn digits taken for card numbers, for expired
+  sample JWTs quoted in papers and docs, or for `BEGIN PRIVATE KEY` headers
+  with no key under them. It prints how many look-alikes it ignored. gitleaks
+  now runs unredacted into a temporary report so these can be told apart;
+  only redacted values are printed.
+- **`sync` shows what it didn't publish in red at the end** ("NOT synced"),
+  with how to fix it, instead of a yellow line that looked like a finished sync.
+
 ## 1.15.0 — 2026-10-22
 
 - **`sync` installs what friends newly shared with you**: skills globally (for

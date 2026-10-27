@@ -1698,8 +1698,10 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
     waiting = sum(len(w) for w in _catalog.get("waiting", {}).values())
     if waiting:
         warn(f"{waiting} shared with you, waiting for you to accept (see above)")
-    if failed:
-        warn(f"Not synced (see above): {', '.join(failed)}")
+    if failed:  # last and in red: a sync that published the rest is easy to read as all done
+        fail(f"NOT synced ({len(failed)}): {', '.join(failed)}")
+        info("Their reason is above (e.g. the secret scan). Fix it and run skylls sync again; for false "
+             "positives: skylls <agents|swarms> push <name> --skip-scan.")
     if core.JSON_MODE:
         emit({"published": published, "updated": updated, "taken": taken, "failed": failed, "installed": installed,
               "waiting": [w for ws in _catalog.get("waiting", {}).values() for w in ws]})

@@ -30,6 +30,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -391,6 +392,57 @@ def is_placeholder(match: str) -> bool:
     return bool(PLACEHOLDER.search(match.replace("REDACTED", "")))
 
 
+def luhn_ok(digits: str) -> bool:
+    total = 0
+    for i, d in enumerate(reversed(digits)):
+        n = int(d) * (2 if i % 2 else 1)
+        total += n - 9 if n > 9 else n
+    return total % 10 == 0
+
+
+def expired_jwt(token: str) -> bool:
+    """A JWT whose exp claim is in the past (sample tokens quoted in papers and docs)."""
+    import base64
+    try:
+        body = token.split(".")[1]
+        claims = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+        return isinstance(claims.get("exp"), (int, float)) and claims["exp"] < time.time()
+    except (IndexError, ValueError, TypeError, AttributeError):
+        return False
+
+
+def is_false_positive(finding: dict, lines: List[str]) -> bool:
+    """Matches that only look like secrets: digit runs inside decimals (SVG coordinates, timings) taken for
+    card numbers, card numbers that fail the Luhn check, expired sample JWTs, and private-key headers
+    with no key under them (a paper quoting `openssl` output)."""
+    rule, secret = finding.get("RuleID", ""), finding.get("Secret", "")
+    start = max(int(finding.get("StartLine") or 1) - 1, 0)
+    line = lines[start] if start < len(lines) else ""
+    if rule == "credit-card-number":
+        digits = re.sub(r"\D", "", secret)
+        in_number = re.search(rf"[\d.]{re.escape(secret)}|{re.escape(secret)}\.?\d", line)
+        return bool(in_number) or not luhn_ok(digits)
+    if rule == "jwt":
+        return expired_jwt(secret)
+    if "private-key" in rule:
+        after = "\n".join(lines[start:start + 60]).split(secret, 1)[-1]
+        return not re.match(r"[\s\"',\\n]*[A-Za-z0-9+/=]{40,}", after)
+    return False
+
+
+def file_lines(path: Path, cache: dict) -> List[str]:
+    if path not in cache:
+        try:
+            cache[path] = path.read_text(errors="ignore").splitlines()
+        except OSError:
+            cache[path] = []
+    return cache[path]
+
+
+def redact(secret: str) -> str:
+    return (secret[:4] + "…") if len(secret) > 6 else "…"
+
+
 def scan_secrets(folder: Path) -> None:
     """Abort unless gitleaks finds no API keys, passwords or private info in folder."""
     if not shutil.which("gitleaks"):
@@ -398,8 +450,10 @@ def scan_secrets(folder: Path) -> None:
             "or pass --skip-scan.")
     info("Scanning for API keys, secrets and private info (gitleaks) …")
     with tempfile.TemporaryDirectory() as tmp:
+        # Unredacted so false positives can be told apart; the report stays in tmp and only redacted
+        # values are printed.
         report = Path(tmp) / "report.json"
-        cmd = ["gitleaks", "dir", str(folder), "--redact", "--no-banner", "--exit-code", "0",
+        cmd = ["gitleaks", "dir", str(folder), "--no-banner", "--exit-code", "0",
                "--log-level", "error", "--report-format", "json", "--report-path", str(report)]
         cfg = gitleaks_config()
         if cfg:
@@ -410,8 +464,14 @@ def scan_secrets(folder: Path) -> None:
         findings = json.loads(report.read_text() or "[]")
     examples = [f for f in findings if is_placeholder(f.get("Match", ""))]
     findings = [f for f in findings if f not in examples]
+    cache: dict = {}
+    lookalikes = [f for f in findings if is_false_positive(f, file_lines(Path(f.get("File", "")), cache))]
+    findings = [f for f in findings if f not in lookalikes]
     if examples:
         info(f"Ignored {len(examples)} example value(s) like \"sk-abc…\" (cut short or placeholders).")
+    if lookalikes:
+        info(f"Ignored {len(lookalikes)} look-alike(s): decimals or non-Luhn digits taken for card numbers, "
+             "expired sample JWTs, private-key headers with no key.")
     if not findings:
         ok("No secrets or private info found.")
         return
@@ -419,7 +479,8 @@ def scan_secrets(folder: Path) -> None:
     for f in findings:
         path = Path(f.get("File", "?"))
         rel = path.relative_to(folder) if path.is_relative_to(folder) else path
-        say(f"    {RED}•{NC} {rel}:{f.get('StartLine', '?')}  {YELLOW}{f.get('RuleID', '?')}{NC}  {f.get('Match', '')}")
+        say(f"    {RED}•{NC} {rel}:{f.get('StartLine', '?')}  {YELLOW}{f.get('RuleID', '?')}{NC}  "
+            f"{redact(f.get('Secret') or '')}")
     die("Nothing was published. Remove them (use placeholders or env vars), "
         "or pass --skip-scan if they are false positives.")
 
