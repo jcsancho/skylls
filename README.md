@@ -151,7 +151,10 @@ skylls push ./path/to/skill                 # or a folder path
   passwords, private keys and personal data (emails, phone numbers…) with
   [gitleaks](https://github.com/gitleaks/gitleaks), and publishes nothing if it
   finds any. Example values cut short or blanked out (`"sk-proj-abc…"`,
-  `xxxxxx`, `<your-key>`) are ignored; `--skip-scan` is for other false positives.
+  `xxxxxx`, `<your-key>`) are ignored. For other findings, push and sync (in a
+  terminal) ask whether they are false positives: answer yes and they are
+  published and remembered (hashed, in `~/.config/skylls/allowed-secrets.json`),
+  so you aren't asked about them again. `--skip-scan` skips the scan altogether.
 - **`CHANGELOG.md`:** each item has one, written by skylls (don't edit it).
   It holds a **plain one-sentence summary** (written by Claude through
   `claude -p`, or yours with `--about "…"`), who created it, and one entry per

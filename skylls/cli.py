@@ -452,8 +452,30 @@ def redact(secret: str) -> str:
     return (secret[:4] + "…") if len(secret) > 6 else "…"
 
 
-def scan_secrets(folder: Path) -> None:
-    """Abort unless gitleaks finds no API keys, passwords or private info in folder."""
+ALLOWED_SECRETS = Path.home() / ".config" / "skylls" / "allowed-secrets.json"  # findings you said are fine
+
+
+def finding_key(f: dict) -> str:
+    """Hash of rule + value, so a finding you allowed stays allowed wherever it moves (the value isn't stored)."""
+    import hashlib
+    return hashlib.sha256(f"{f.get('RuleID', '')}\0{f.get('Secret') or f.get('Match', '')}".encode()).hexdigest()
+
+
+def load_allowed() -> set:
+    try:
+        return set(json.loads(ALLOWED_SECRETS.read_text()))
+    except (OSError, ValueError, TypeError):
+        return set()
+
+
+def remember_allowed(keys: set) -> None:
+    ALLOWED_SECRETS.parent.mkdir(parents=True, exist_ok=True)
+    ALLOWED_SECRETS.write_text(json.dumps(sorted(load_allowed() | keys), indent=2) + "\n")
+
+
+def scan_secrets(folder: Path, ask: bool = False) -> None:
+    """Abort unless gitleaks finds no API keys, passwords or private info in folder. With ask (and a
+    terminal) the user can say the findings are false positives: they are published and remembered."""
     if not shutil.which("gitleaks"):
         die("gitleaks is required to check for secrets before publishing (brew install gitleaks), "
             "or pass --skip-scan.")
@@ -477,11 +499,16 @@ def scan_secrets(folder: Path) -> None:
     cache: dict = {}
     lookalikes = [f for f in findings if is_false_positive(f, file_lines(Path(f.get("File", "")), cache))]
     findings = [f for f in findings if f not in lookalikes]
+    allowed = load_allowed()
+    known = [f for f in findings if finding_key(f) in allowed]
+    findings = [f for f in findings if f not in known]
     if examples:
         info(f"Ignored {len(examples)} example value(s) like \"sk-abc…\" (cut short or placeholders).")
     if lookalikes:
         info(f"Ignored {len(lookalikes)} look-alike(s): decimals or non-Luhn digits taken for card numbers, "
              "expired sample JWTs, private-key headers with no key.")
+    if known:
+        info(f"Ignored {len(known)} you said are fine before (~/.config/skylls/allowed-secrets.json).")
     if not findings:
         ok("No secrets or private info found.")
         return
@@ -491,6 +518,13 @@ def scan_secrets(folder: Path) -> None:
         rel = path.relative_to(folder) if path.is_relative_to(folder) else path
         say(f"    {RED}•{NC} {rel}:{f.get('StartLine', '?')}  {YELLOW}{f.get('RuleID', '?')}{NC}  "
             f"{redact(f.get('Secret') or '')}")
+    if ask and not JSON_MODE and sys.stdin.isatty():
+        answer = input(f"  {YELLOW}?{NC} Are these false positives? Publish anyway and don't ask about them "
+                       "again? (y/N): ").strip().lower()
+        if answer in ("y", "yes"):
+            remember_allowed({finding_key(f) for f in findings})
+            ok(f"Publishing; remembered as fine in ~/.config/skylls/allowed-secrets.json.")
+            return
     die("Nothing was published. Remove them (use placeholders or env vars), "
         "or pass --skip-scan if they are false positives.")
 

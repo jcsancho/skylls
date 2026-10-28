@@ -3,6 +3,15 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.17.0 — 2026-10-28
+
+- **The secret scan asks instead of only refusing**: when sync, push or propose
+  finds possible secrets and runs in a terminal, it lists them and asks whether
+  they are false positives. Yes publishes and remembers them (a hash of rule +
+  value in `~/.config/skylls/allowed-secrets.json`, never the value), so later
+  scans skip them, wherever the value moves. No, `--json` or no terminal:
+  nothing is published, as before.
+
 ## 1.16.2 — 2026-10-27
 
 - **An item's own `.gitignore` no longer drops files from a publish** (or a

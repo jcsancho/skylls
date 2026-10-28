@@ -1126,7 +1126,7 @@ def publish(cfg: dict, kind: str, src: Path, message: Optional[str], part: str, 
         with tempfile.TemporaryDirectory() as tmp:
             for rel in files:
                 place(rel, Path(tmp) / name)
-            core.scan_secrets(Path(tmp) / name)
+            core.scan_secrets(Path(tmp) / name, ask=not dry_run)
     exists = core.gh("repo", "view", repo).returncode == 0
     if dry_run:
         info(f"Would publish {len(files)} files to {'' if exists else 'a new private repo '}{repo}")
@@ -1710,8 +1710,8 @@ def cmd_sync(cfg: dict, message: Optional[str], skip_scan: bool, dry_run: bool, 
         warn(f"{waiting} shared with you, waiting for you to accept (see above)")
     if failed:  # last and in red: a sync that published the rest is easy to read as all done
         fail(f"NOT synced ({len(failed)}): {', '.join(failed)}")
-        info("Their reason is above (e.g. the secret scan). Fix it and run skylls sync again; for false "
-             "positives: skylls <agents|swarms> push <name> --skip-scan.")
+        info("Their reason is above (e.g. the secret scan). Fix it and run skylls sync again (in a terminal it "
+             "asks whether scan findings are false positives and remembers your yes).")
     if core.JSON_MODE:
         emit({"published": published, "updated": updated, "taken": taken, "failed": failed, "installed": installed,
               "waiting": [w for ws in _catalog.get("waiting", {}).values() for w in ws]})
@@ -2445,7 +2445,7 @@ def cmd_propose(cfg: dict, kind: str, name: str, owner: Optional[str], message: 
                     (scan / rel).parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(work / rel, scan / rel)
             if scan.exists():
-                core.scan_secrets(scan)
+                core.scan_secrets(scan, ask=not dry_run)
         else:
             warn("Skipping the secret scan (--skip-scan).")
         if dry_run:
