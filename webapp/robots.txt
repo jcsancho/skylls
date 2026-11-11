@@ -1,0 +1,34 @@
+# skylls.dev: public pages are open to search engines and AI crawlers.
+# The dashboard and the API are private app endpoints.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
+Sitemap: https://www.skylls.dev/sitemap.xml

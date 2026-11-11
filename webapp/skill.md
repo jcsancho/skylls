@@ -43,14 +43,15 @@ Read an installed SKILL.md only when you are about to use it.
     skylls swarms share <name> @user --prs|--no-prs  # agents/swarms: ask the user whether they may send pull requests
     skylls unshare <name> @user                      # take one item back; skylls revoke @user = everything
     skylls source add <friend>                       # see what a friend shared with the user
-    skylls sync -m "what changed"                    # publish all the user's changed items + install friends' new versions
+    skylls sync -m "what changed"                    # take changes others pushed to the user's items, publish the user's changes, install friends' new versions + what they newly shared (lists shares to accept: skylls source add <owner>)
+    skylls view                                      # first: what sync would publish/install + what isn't installed (changes nothing)
     skylls suggest <name> --from <owner> "idea"      # improve someone else's item
     skylls swarms propose <name> --from <owner> -m "what"   # your changes to a friend's agent/swarm copy → pull request
     skylls swarms allow-prs <name> | --all           # owner: let the people you share with send pull requests
     skylls suggestions / review <name>#<n> / accept <name>#<n> / decline <name>#<n>   # owner: answer (accept merges + publishes)
-- Push scans for API keys and personal data and refuses if it finds any: remove them, never use --skip-scan on your own.
+- Push scans for API keys and personal data and refuses if it finds any: remove them, never use --skip-scan on your own. In a terminal it asks the user whether they are false positives (a yes is remembered); that answer is the user's.
 - Agent/swarm memory notes go with them, except notes with `private: true` in their frontmatter: write private facts (clients, people, money) there.
-- Agents/swarms push and sync list new memory notes and ask; show the user that list, use -y only after they agree.
+- Agents/swarms push lists new memory notes and asks; show the user that list, use -y only after they agree. sync publishes them without asking: run view first when the user wants to check them.
 - Sharing access and removing things are the user's decisions; never do them unprompted.
 
 ## Rules

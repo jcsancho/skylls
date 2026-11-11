@@ -34,6 +34,7 @@ same logic as the CLI (`../skylls/kinds.py`).
 |---|---|
 | `index.html`, `docs.html`, `dashboard.html`, `privacy.html`, `terms.html`, `cookies.html` | the pages |
 | `llms.txt`, `skill.md` | the guide for AI agents; the skylls skill (copy it from `../skylls/skills/skylls/SKILL.md` when that changes) |
+| `robots.txt`, `sitemap.xml` | crawler rules (`/api/` and `/dashboard` disallowed) and the public pages; update `lastmod` when a page changes |
 | `consent.js` | cookie banner + settings; loads Google Fonts only after consent |
 | `api/auth/login.js`, `callback.js`, `logout.js` | sign-in with GitHub |
 | `api/me.js`, `items.js`, `access.js` | who you are; your and your friends' items + invitations; who can see an item |

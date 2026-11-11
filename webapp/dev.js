@@ -12,7 +12,10 @@ const PAGES = {
 };
 const ASSETS = {
   "/consent.js": "text/javascript; charset=utf-8",
-  "/llms.txt": "text/markdown; charset=utf-8",
+  "/llms.txt": "text/plain; charset=utf-8",
+  "/robots.txt": "text/plain; charset=utf-8",
+  "/sitemap.xml": "application/xml; charset=utf-8",
+  "/marketplace-card.png": "image/png",
   "/skill.md": "text/markdown; charset=utf-8",
   "/network.svg": "image/svg+xml",
   "/install.sh": "text/plain; charset=utf-8",
@@ -36,7 +39,9 @@ export async function app(request) {
   }
   const page = PAGES[pathname.replace(/\.html$/, "")];
   if (!page) return new Response("Not found", { status: 404 });
-  return new Response(await readFile(join(ROOT, page)), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  const headers = { "Content-Type": "text/html; charset=utf-8" };
+  if (page === "dashboard.html") headers["X-Robots-Tag"] = "noindex, nofollow";
+  return new Response(await readFile(join(ROOT, page)), { headers });
 }
 
 export function serve(port) {

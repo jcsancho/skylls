@@ -71,6 +71,7 @@ maintained in one place by its owner.
     skylls add pdf --from alice            # when two owners have the same name
     skylls pull --update                   # install newer versions of installed skills
     skylls sync -m "what changed"          # publish your changed items, then install friends' new versions
+    skylls view                            # only list what sync would do (changes nothing)
 
 Where skills go (project `./` or global `~/` with `-g`):
 
@@ -141,7 +142,8 @@ Add `--dry-run` to any command that changes files or GitHub to preview it.
 2. Installing a skill is fine when the user asked for the capability. **Publishing, sharing,
    unsharing and removing are the user's decisions:** confirm first, never do them unprompted.
 3. Every `push` is scanned for API keys and personal data and refused on findings. Remove the
-   secret; never pass `--skip-scan` on your own.
+   secret; never pass `--skip-scan` on your own. In a terminal it asks the user whether the
+   findings are false positives (a yes is remembered); that answer is the user's.
 4. Don't read or edit skylls' cache (`~/.cache/skylls`) or `CHANGELOG.md` files.
 5. Results look wrong or a command is missing? `skylls update --check`.
 6. Report the outcome in one line (what the user can now do), not as an install log.
@@ -155,7 +157,8 @@ Add `--dry-run` to any command that changes files or GitHub to preview it.
     log <name> [--from O]                   who made it, versions, what changed
     installed [-g] [-a A]                   installed skills and newer versions
     pull [--update]                         check for (and install) newer versions
-    sync [-m msg] [--skip-scan] [--keep-memory]  publish your changed items + install friends' new versions
+    sync [-m msg] [--skip-scan] [-y] [--keep-memory]  publish your changed items + install friends' new versions and new shares
+    view                                    what sync would publish and install, and what isn't on this computer (changes nothing)
     remove <name> [-g] [-a A]               remove a local copy
     push <name|path> [-m msg] [--minor|--major] [--about text] [--folder F] [--skip-scan]
     share <name> @user… | --all @user       let friends install it (no users: who has access)

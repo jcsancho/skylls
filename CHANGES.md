@@ -3,6 +3,22 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## webapp 1.9.0 — 2026-11-11
+
+- **Search and AI crawlers:** `/robots.txt` (everything open, AI crawlers
+  named; `/api/` and `/dashboard` disallowed; points to the sitemap) and
+  `/sitemap.xml` with the public pages.
+- **Every public page** has a canonical `https://www.skylls.dev/…` link, a
+  specific description, a shorter descriptive title, and Open Graph + Twitter
+  tags with `marketplace-card.png` (now deployed; it was in `.vercelignore`).
+- **Structured data:** SoftwareApplication, Organization (AIagentsLab) and
+  WebSite on the home page; TechArticle, breadcrumbs and the FAQ on the docs.
+- **The dashboard isn't indexed** (`noindex` meta and `X-Robots-Tag`, also on
+  `/api/*`); its sign-in link is `rel="nofollow"`.
+- Footers link "Built by AIagentsLab".
+- `llms.txt` is served as `text/plain`; it and the docs list `skylls view`
+  and what `sync` installs; `skill.md` is a fresh copy of the CLI's skill.
+
 ## 1.17.0 — 2026-10-28
 
 - **The secret scan asks instead of only refusing**: when sync, push or propose

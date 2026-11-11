@@ -231,7 +231,7 @@ test("docs for LLMs: llms.txt, skill.md (same as the CLI's skill), /doc redirect
   const { readFile } = await import("node:fs/promises");
   const llms = await call("/llms.txt");
   assert.equal(llms.status, 200);
-  assert.match(llms.headers.get("content-type"), /text\/markdown/);
+  assert.match(llms.headers.get("content-type"), /text\/plain/);
   assert.match(llms.data, /^# skylls/);
   assert.match(llms.data, /skylls agent-skill -g -a all/);
   const skill = await call("/skill.md");
@@ -243,6 +243,41 @@ test("docs for LLMs: llms.txt, skill.md (same as the CLI's skill), /doc redirect
   const doc = await app(new Request("http://localhost/doc"));
   assert.equal(doc.status, 308);
   assert.equal(doc.headers.get("location"), "/docs");
+});
+
+test("SEO: robots.txt, sitemap, canonical + social tags, noindex dashboard, JSON-LD", async () => {
+  const robots = await call("/robots.txt");
+  assert.match(robots.headers.get("content-type"), /text\/plain/);
+  assert.match(robots.data, /Disallow: \/api\//);
+  assert.match(robots.data, /Disallow: \/dashboard/);
+  assert.match(robots.data, /^Sitemap: https:\/\/www\.skylls\.dev\/sitemap\.xml$/m);
+  const sitemap = await call("/sitemap.xml");
+  assert.match(sitemap.headers.get("content-type"), /application\/xml/);
+  const pages = { "/": "https://www.skylls.dev/", "/docs": "https://www.skylls.dev/docs",
+    "/privacy": "https://www.skylls.dev/privacy", "/terms": "https://www.skylls.dev/terms",
+    "/cookies": "https://www.skylls.dev/cookies" };
+  for (const [page, url] of Object.entries(pages)) {
+    assert.ok(sitemap.data.includes(`<loc>${url}</loc>`), page);
+    const html = (await call(page)).data;
+    assert.ok(html.includes(`<link rel="canonical" href="${url}">`), page);
+    assert.match(html, /<meta name="description" content="[^"]{50,160}">/, page);
+    const title = html.match(/<title>([^<]*)<\/title>/)[1];
+    assert.ok(title.length >= 30 && title.length <= 60, `${page} title: ${title}`);
+    for (const tag of ["og:title", "og:description", "og:url"]) assert.match(html, new RegExp(`property="${tag}"`), page);
+    assert.match(html, /property="og:image" content="https:\/\/www\.skylls\.dev\/marketplace-card\.png"/, page);
+    assert.match(html, /name="twitter:card" content="summary_large_image"/, page);
+    assert.match(html, /aiagentslab\.com\/products\/skylls/, page);
+    assert.doesNotMatch(html, /name="robots"/, page);
+    for (const [, json] of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(json);
+  }
+  const ld = (await call("/")).data.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1];
+  const types = JSON.parse(ld)["@graph"].map((node) => node["@type"]);
+  assert.deepEqual(types.sort(), ["Organization", "SoftwareApplication", "WebSite"]);
+  const dashboard = await call("/dashboard");
+  assert.match(dashboard.data, /<meta name="robots" content="noindex, nofollow">/);
+  assert.equal(dashboard.headers.get("x-robots-tag"), "noindex, nofollow");
+  assert.doesNotMatch(dashboard.data, /href="\/api\/auth\/login"(?! rel="nofollow")/);
+  assert.equal((await call("/marketplace-card.png")).status, 200);
 });
 
 test("/install.sh is a copy of the repo's installer, as plain text", async () => {
