@@ -49,6 +49,11 @@ echo "  tags pdf:"; git --git-dir $GHROOT/alice/skylls-skill-pdf.git tag | paste
 echo "  private/topics:"; python3 -c "import json;s=json.load(open('$GHROOT/state.json'));[print(' ',k,v['private'],v['topics']) for k,v in s['repos'].items()]"
 echo "--- list / folder / find --json / log --json"
 s list; s folder | head -4; sj find pdf; sj log pdf | head -c 300; echo
+echo "--- list filters (words, dates, sort, --mine, --fresh)"
+s list pdf --created today | grep -E "•"; s list --created-before 2000-01-01 | grep -E "match"
+s list --since 7d --sort updated -n 1 | grep -E "newest|Showing"; s list --mine --installed --fresh | grep -E "•|match"
+sj list --updated "$(date +%Y)" | python3 -c "import sys,json;print('  dated --json:', sorted(json.loads(l)['name'] for l in sys.stdin if l.strip()))"
+s list --created soon | grep -E "Not a date"
 mkdir -p $HOME/agents/draft; echo "# draft agent not published yet" > $HOME/agents/draft/CLAUDE.md; s agents list
 echo "--- share pdf + btc with bob (not notes)"
 s share pdf @bob | grep -E "Invited|add you"; s agents share btc @bob | grep Invited

@@ -443,13 +443,15 @@ def clone_head(node: dict) -> dict:
 
 
 def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, quiet: bool = False,
-            local: bool = False) -> List[dict]:
+            local: bool = False, complete: bool = False) -> List[dict]:
     """Items you and your friends published (that you can see), fresh from GitHub once per run.
     Invites from people who aren't your friends yet are kept in _catalog["waiting"] (quiet: don't mention them).
     Every full listing remembers your item repos in MINE_INDEX. local (sync): only the repos shared with you are
     listed on GitHub, yours come from MINE_INDEX and their clones in the cache, plus GitHub's state of those
     pushed to since the last look; items whose clone has the commit GitHub is at are read from the clone, your
-    others without a version; only friends' new versions are read from GitHub."""
+    others without a version; only friends' new versions are read from GitHub.
+    complete (list, find): like local, but your items without an up-to-date clone are read from GitHub too."""
+    local = local or complete
     if "all" not in _catalog:
         owners = {cfg["owner"].lower(), cfg["login"].lower()} | {f.lower() for f in cfg.get("friends", [])}
         core.progress(0, 1, "GitHub: checking invites")
@@ -478,7 +480,8 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
         else:  # your repos: only those pushed to since the last look (a friend with write access, another computer)
             known_mine, pushed = known_mine
             nodes = {r: n for r, n in list_repos(SHARED_WITH_ME).items() if not mine(cfg, r.split("/")[0])}
-            nodes.update({r: clone_head(n) for r, n in known_mine.items()})
+            with ThreadPoolExecutor(8) as pool:  # one git call per clone: in parallel
+                nodes.update(zip(known_mine, pool.map(clone_head, known_mine.values())))
             for who in sorted({cfg["owner"]} | {r.split("/")[0] for r in known_mine}, key=str.lower):
                 fresh = pushed_since(who, pushed.get(who.lower(), ""))
                 for n in fresh:
@@ -496,8 +499,11 @@ def catalog(cfg: dict, kind: Optional[str] = None, owner: Optional[str] = None, 
             info(f"{who} may have shared skylls items with you: skylls source add {who}")
         records_ = []
         if local:
-            known = {r: node for r in wanted if (node := from_clone(nodes[r])
-                                                 or (nodes[r] if mine(cfg, r.split("/")[0]) else None))}
+            with ThreadPoolExecutor(8) as pool:
+                cloned = dict(zip(wanted, pool.map(lambda r: from_clone(nodes[r]), wanted)))
+            known = {r: node for r in wanted if (node := cloned[r]
+                                                 or (nodes[r] if mine(cfg, r.split("/")[0]) and not complete
+                                                     else None))}
             records_ += [rec for node in known.values() if (rec := to_record(cfg, node))]
             wanted = [r for r in wanted if r not in known]
         for start in range(0, len(wanted), 20):  # 40 big items can take GitHub over its 10 s limit
@@ -1275,7 +1281,9 @@ def print_record(r: dict, indent: int = 2) -> None:
     say(f"{pad}{GREEN}•{NC} {CYAN}{r['name']}{NC}{label}")
     if r.get("summary"):
         say(f"{pad}  {r['summary']}")
-    extra = [x for x in (f"by {r['by']}" if r.get("by") else "", f"updated {r['updated']}" if r.get("updated") else "",
+    created = r.get("created") if r.get("created") and r.get("created") != r.get("updated") else ""
+    extra = [x for x in (f"by {r['by']}" if r.get("by") else "", f"created {created}" if created else "",
+                         f"updated {r['updated']}" if r.get("updated") else "",
                          f"copy of {r['source']}" if r.get("source") else "") if x]
     if extra:
         say(f"{pad}  {' · '.join(extra)}")
@@ -1283,7 +1291,7 @@ def print_record(r: dict, indent: int = 2) -> None:
 
 def public(r: dict) -> dict:
     """The fields shown to agents (--json)."""
-    return {k: r.get(k) for k in ("name", "owner", "folder", "version", "newer", "summary", "updated",
+    return {k: r.get(k) for k in ("name", "owner", "folder", "version", "newer", "summary", "created", "updated",
                                    "installed", "published", "source", "repo")}
 
 
@@ -1295,9 +1303,11 @@ def mark_installed(cfg: dict, kind: str, r: dict) -> dict:
     return r
 
 
-def records(cfg: dict, kind: str, owner: Optional[str] = None, folder: Optional[str] = None) -> List[dict]:
-    """Catalog + (agents/swarms) your local items that aren't published yet."""
-    rows = [mark_installed(cfg, kind, dict(r)) for r in catalog(cfg, kind, owner)]
+def records(cfg: dict, kind: str, owner: Optional[str] = None, folder: Optional[str] = None,
+            fresh: bool = True) -> List[dict]:
+    """Catalog + (agents/swarms) your local items that aren't published yet.
+    fresh=False: the quick catalog (your repos from the index and the cache clones, like sync)."""
+    rows = [mark_installed(cfg, kind, dict(r)) for r in catalog(cfg, kind, owner, complete=not fresh)]
     if kind != "skills" and (not owner or mine(cfg, owner)):
         published = {r["name"].lower() for r in rows if r["mine"]}
         root = Path(cfg["dirs"][kind]).expanduser()
@@ -1314,13 +1324,75 @@ def records(cfg: dict, kind: str, owner: Optional[str] = None, folder: Optional[
     return rows
 
 
-def cmd_list(cfg: dict, kind: str, query: Optional[str], owner: Optional[str], folder: Optional[str]) -> None:
-    q = (query or "").lower()
-    rows = [r for r in records(cfg, kind, owner, folder)
-            if not q or q in f"{r['name']} {r.get('summary') or ''} {r.get('folder', '')}".lower()]
+UNITS = {"d": 1, "w": 7, "m": 30, "y": 365}
+
+
+def when(text: str) -> str:
+    """A date for --created/--updated filters: YYYY-MM-DD, YYYY-MM, YYYY, today, yesterday, or an age
+    like 3d, 2w, 6m, 1y (that long ago). Returned as a prefix of an ISO date, so it compares as a string."""
+    t = text.strip().lower()
+    if t in ("today", "yesterday"):
+        return date.fromordinal(date.today().toordinal() - (t == "yesterday")).isoformat()
+    if (m := re.fullmatch(r"(\d+)\s*([dwmy])", t)):
+        return date.fromordinal(date.today().toordinal() - int(m[1]) * UNITS[m[2]]).isoformat()
+    if re.fullmatch(r"\d{4}(-\d{2}(-\d{2})?)?", t):
+        return t
+    die(f"Not a date: '{text}'. Use YYYY-MM-DD, YYYY-MM, YYYY, today, yesterday, or an age like 7d, 2w, 3m, 1y.")
+
+
+def filtered(rows: List[dict], args) -> List[dict]:
+    """The rows that pass the list/find filters (--mine, --shared, --installed, dates), sorted by --sort."""
+    if args is None:
+        return rows
+    tests = []
+    if getattr(args, "mine", False):
+        tests.append(lambda r: r["mine"])
+    if getattr(args, "shared", False):
+        tests.append(lambda r: not r["mine"])
+    if getattr(args, "installed", False):
+        tests.append(lambda r: bool(r.get("installed")))
+    for field in ("created", "updated"):
+        if (on := getattr(args, field, None)):
+            tests.append(lambda r, f=field, d=when(on): (r.get(f) or "").startswith(d))
+        if (after := getattr(args, f"{field}_after", None)):
+            tests.append(lambda r, f=field, d=when(after): bool(r.get(f)) and r[f] >= d)
+        if (before := getattr(args, f"{field}_before", None)):
+            tests.append(lambda r, f=field, d=when(before): bool(r.get(f)) and r[f] < d)
+    rows = [r for r in rows if all(t(r) for t in tests)]
+    sort = getattr(args, "sort", None)
+    if sort in ("created", "updated"):  # newest first; undated last
+        rows = sorted(rows, key=lambda r: r.get(sort) or "", reverse=True)
+    elif sort == "name":
+        rows = sorted(rows, key=lambda r: (r["name"].lower(), r["owner"].lower()))
+    return rows
+
+
+def matches(r: dict, terms: List[str]) -> bool:
+    """Every word is in the name, summary, folder, owner or author."""
+    hay = f"{r['name']} {r.get('summary') or ''} {r.get('folder', '')} {r['owner']} {r.get('by') or ''}".lower()
+    return all(t in hay for t in terms)
+
+
+def cmd_list(cfg: dict, kind: str, query=None, owner: Optional[str] = None, folder: Optional[str] = None,
+             args=None) -> None:
+    terms = [w.lower() for w in ([query] if isinstance(query, str) else (query or []))]
+    rows = filtered([r for r in records(cfg, kind, owner, folder, fresh=bool(getattr(args, "fresh", False)))
+                     if matches(r, terms)], args)
+    limit = getattr(args, "limit", None)
+    total, rows = len(rows), rows[:limit] if limit else rows
     if core.JSON_MODE:
         for r in rows:
             emit(public(r))
+        if total > len(rows):
+            warn(f"{total - len(rows)} more; raise --limit")
+        return
+    if getattr(args, "sort", None) in ("created", "updated"):  # one list, newest first
+        section(f"{kind.capitalize()} by {args.sort} date, newest first")
+        for r in rows:
+            print_record(r)
+            if not r["mine"]:
+                say(f"    from {r['owner']}")
+        rows_shown(kind, rows, total)
         return
     groups: Dict[str, List[dict]] = {}
     for r in rows:
@@ -1336,22 +1408,39 @@ def cmd_list(cfg: dict, kind: str, query: Optional[str], owner: Optional[str], f
                 say(f"  {BLUE}{f or '(no folder)'}{NC}")
             for r in by_folder[f]:
                 print_record(r, 4 if nested else 2)
-    if not rows:
+    if not rows and not terms and not any(getattr(args, a, None) for a in FILTERS) and folder is None:
         warn(f"No {kind} yet. Publish one with: skylls{cmd_prefix(kind)} push <name>"
              f"{'' if cfg.get('friends') else ', or add a friend: skylls source add <their-login>'}")
+    else:
+        rows_shown(kind, rows, total)
+
+
+FILTERS = ("mine", "shared", "installed", "created", "created_after", "created_before",
+           "updated", "updated_after", "updated_before")
+
+
+def rows_shown(kind: str, rows: List[dict], total: int) -> None:
+    if not rows:
+        warn(f"No {kind} match.")
+    elif total > len(rows):
+        info(f"Showing {len(rows)} of {total}; raise --limit to see more.")
 
 
 def cmd_find(cfg: dict, kind: str, words: List[str], owner: Optional[str], folder: Optional[str],
-             limit: Optional[int]) -> None:
-    if not words and folder is None:
-        die(f"Give keywords and/or --folder, e.g. skylls{cmd_prefix(kind)} find pdf")
+             limit: Optional[int], args=None) -> None:
+    if not words and folder is None and not any(getattr(args, a, None) for a in FILTERS):
+        die(f"Give keywords, --folder or a filter, e.g. skylls{cmd_prefix(kind)} find pdf")
     terms = [w.lower() for w in words]
     scored = []
-    for r in records(cfg, kind, owner, folder):
+    for r in filtered(records(cfg, kind, owner, folder, fresh=bool(getattr(args, "fresh", False))), args):
         fields = [(r["name"], 5), (r.get("folder", ""), 3), (r.get("summary") or "", 3), (r.get("text", ""), 1)]
         if all(any(t in text.lower() for text, _ in fields) for t in terms):
             scored.append((-sum(w for t in terms for text, w in fields if t in text.lower()), r["name"].lower(), r))
-    scored.sort(key=lambda s: (s[0], s[1]))
+    if getattr(args, "sort", None) in ("created", "updated", "name"):
+        order = {id(r): i for i, r in enumerate(filtered([s[2] for s in scored], args))}
+        scored.sort(key=lambda s: order[id(s[2])])
+    else:
+        scored.sort(key=lambda s: (s[0], s[1]))
     limit = limit if limit is not None else (10 if core.JSON_MODE else None)
     shown = [r for _, _, r in (scored[:limit] if limit else scored)]
     if core.JSON_MODE:
@@ -1366,7 +1455,8 @@ def cmd_find(cfg: dict, kind: str, words: List[str], owner: Optional[str], folde
         if not r["mine"]:
             say(f"    from {r['owner']}")
     folders = {r.get("folder") for r in shown if r.get("folder")}
-    related = sorted({r["name"] for r in records(cfg, kind) if r.get("folder") in folders} - {r["name"] for r in shown})
+    related = sorted({r["name"] for r in records(cfg, kind, fresh=bool(getattr(args, "fresh", False)))
+                      if r.get("folder") in folders} - {r["name"] for r in shown})
     if terms and related:
         info(f"Related (same folder): {', '.join(related)}")
     if not shown:
@@ -2562,18 +2652,37 @@ def split_ref(kind: str, ref: str) -> Tuple[str, str]:
 
 
 # ── Command line: the same subcommands for skills (top level), agents and swarms ──
+def add_filter_args(sp) -> None:
+    """Filters shared by list and find. Dates: YYYY-MM-DD, YYYY-MM, YYYY, today, yesterday, 7d, 2w, 3m, 1y."""
+    sp.add_argument("--mine", action="store_true", help="Only yours.")
+    sp.add_argument("--shared", action="store_true", help="Only what friends shared with you.")
+    sp.add_argument("--installed", action="store_true", help="Only installed ones.")
+    sp.add_argument("--created", metavar="DATE", help="Created on that day, month or year (2026-11, today).")
+    sp.add_argument("--created-after", "--since", metavar="DATE", help="Created on or after DATE (or within 7d, 2w…).")
+    sp.add_argument("--created-before", metavar="DATE", help="Created before DATE.")
+    sp.add_argument("--updated", metavar="DATE", help="Last version on that day, month or year.")
+    sp.add_argument("--updated-after", metavar="DATE", help="Last version on or after DATE (or within 7d…).")
+    sp.add_argument("--updated-before", metavar="DATE", help="Last version before DATE.")
+    sp.add_argument("--sort", choices=("name", "created", "updated"), help="Order (dates: newest first, one list).")
+    sp.add_argument("--fresh", action="store_true",
+                    help="Re-list all your repos on GitHub (slower; normally your repos come from the local index).")
+
+
 def add_item_parsers(sub, kind: str, scoped) -> None:
     """Subcommands shared by skills (top level), `skylls agents …` and `skylls swarms …`."""
     o = one(kind)
     sp = sub.add_parser("list", help=f"Yours and your friends' {kind}.")
-    sp.add_argument("query", nargs="?")
+    sp.add_argument("query", nargs="*", help="Words that must all appear (name, summary, folder, owner).")
     sp.add_argument("--from", dest="owner")
     sp.add_argument("-f", "--folder")
+    sp.add_argument("-n", "--limit", type=int, help="At most N results.")
+    add_filter_args(sp)
     sp = sub.add_parser("find", help=f"Search {kind} by keyword and/or folder.")
     sp.add_argument("words", nargs="*")
     sp.add_argument("--from", dest="owner")
     sp.add_argument("-f", "--folder")
     sp.add_argument("-n", "--limit", type=int, help="At most N results (default 10 with --json).")
+    add_filter_args(sp)
     sp = sub.add_parser("add", help=f"Install {an(o)} (name or name@version).")
     sp.add_argument("name")
     sp.add_argument("--from", dest="owner", help="Whose (when several people have one with that name).")
@@ -2660,9 +2769,9 @@ def fix_share_args(args) -> None:
 
 def run(cfg: dict, kind: str, cmd: str, args) -> None:
     if cmd == "list":
-        cmd_list(cfg, kind, args.query, args.owner, args.folder)
+        cmd_list(cfg, kind, args.query, args.owner, args.folder, args)
     elif cmd == "find":
-        cmd_find(cfg, kind, args.words, args.owner, args.folder, args.limit)
+        cmd_find(cfg, kind, args.words, args.owner, args.folder, args.limit, args)
     elif cmd == "add":
         if kind == "skills":
             cmd_add_skill(cfg, args.name, args.owner, args.agent, bool(args.is_global), args.yes, args.dry_run)

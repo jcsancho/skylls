@@ -95,10 +95,16 @@ skylls add pdf -g -a all                  # installs it for Claude Code, Codex a
 
 ## Find and install
 
+`list` and `find` are quick: your own repos come from a local index and the cache clones (as in `sync`); `--fresh` re-lists everything on GitHub (slower).
+
 ```bash
 skylls list                         # your skills and what friends shared, grouped by folder
 skylls find invoice                 # search name, folder, summary and SKILL.md text
 skylls find --folder docs           # one folder
+skylls list pdf invoice             # only items whose name/summary/folder/owner has all the words
+skylls list --since 7d --sort created   # created in the last week, newest first
+skylls list --created 2026-11 --mine    # yours created in November 2026 (also --shared, --installed)
+skylls list --updated-after 2026-11-01 -n 10   # last version since then, first 10
 skylls add pdf                      # this project: ./.claude/skills/pdf (+ ./.agents, ./.gemini)
 skylls add pdf -g -a all            # global: ~/.claude/skills/pdf, Codex/Gemini link to it
 skylls add pdf --from alice         # when several people have a "pdf"
@@ -389,7 +395,7 @@ Add `--dry-run` to any command to see what it would do without changing anything
 | Command | What it does |
 |---------|--------------|
 | `setup [--owner O] [--agents A] [--agents-dir D] [--swarms-dir D] [--no-agent-skill]` | Your account or organization, agent CLIs, folders, the skylls skill |
-| `list [query] [--from O] [-f F]` | Your items and what friends shared, grouped by folder |
+| `list [words] [--from O] [-f F] [-n N] [filters]` | Your items and what friends shared, grouped by folder. Filters (also on `find`): `--mine`, `--shared`, `--installed`, `--created D`, `--created-after D` (`--since`), `--created-before D`, `--updated D`, `--updated-after D`, `--updated-before D`, `--sort name\|created\|updated`, `--fresh`. Dates: `YYYY-MM-DD`, `YYYY-MM`, `YYYY`, `today`, `yesterday`, `7d`, `2w`, `3m`, `1y` |
 | `find <words> [--from O] [-f F] [-n N]` | Search; shows summary, version, owner, folder |
 | `add <name[@ver]> [--from O] [-g] [-a A] [-y]` | Install a skill (`owner/repo/skill`: from a public repo) |
 | `log <name> [--from O]` | Who made it, versions, what changed |

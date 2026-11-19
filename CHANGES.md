@@ -3,6 +3,23 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.18.0 — 2026-11-19
+
+- **`list` and `find` are much faster** (75 s → ~5 s with 170 items): like
+  `sync`, they take your own repos from the local index and the cache clones
+  and ask GitHub only for what's shared with you and what was pushed since;
+  your items without an up-to-date clone are still read from GitHub. The local
+  `git` reads run in parallel. `--fresh` re-lists everything on GitHub.
+- **Filters on `list` and `find`**: several words (all must match: name,
+  summary, folder, owner, author), `--mine`, `--shared`, `--installed`,
+  `--created D`, `--created-after D` (`--since`), `--created-before D`,
+  `--updated D`, `--updated-after D`, `--updated-before D`,
+  `--sort name|created|updated` (dates: one list, newest first) and
+  `-n/--limit` on `list`. Dates: `YYYY-MM-DD`, `YYYY-MM`, `YYYY`, `today`,
+  `yesterday`, or an age like `7d`, `2w`, `3m`, `1y`.
+- Items show their creation date (when it differs from the last update), and
+  `--json` has a `created` field.
+
 ## webapp 1.9.0 — 2026-11-11
 
 - **Search and AI crawlers:** `/robots.txt` (everything open, AI crawlers

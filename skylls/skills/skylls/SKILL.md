@@ -18,10 +18,11 @@ If results look wrong or a command is missing, check for a newer skylls: `skylls
     skylls find <keywords> --json --limit 5          # skills
     skylls agents find <keywords> --json --limit 5   # agents (also: skylls swarms find …)
     skylls find --folder <folder> --json             # everything in a folder
+    skylls list --since 7d --sort created --json     # newest first; also --created 2026-11, --updated-after D, --mine, --shared
     skylls installed --json                          # installed skills; "newer" = update available
     skylls shared --json [@user]                     # shared by the user ("with", "pending") / with the user ("pending" = not accepted yet)
     skylls people --json                             # per person: you_share, they_share, waiting (+ accept command)
-Fields: name, owner, folder, version, summary, updated, installed, published (false = not published yet).
+Fields: name, owner, folder, version, summary, created, updated, installed, published (false = not published yet).
 
 ## 2. Install
     skylls add <name> -g -a all                      # skill for Claude, Codex and Gemini, all projects

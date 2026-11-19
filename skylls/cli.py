@@ -765,7 +765,10 @@ Every item you publish gets its own private GitHub repo; you share item by item.
   skylls agents <COMMAND> …   /   skylls swarms <COMMAND> …   (same commands)
 
 {CYAN}FIND & INSTALL:{NC}
-  {GREEN}list{NC} [query] [--from O] [-f F]     Yours and your friends' (grouped by folder)
+  {GREEN}list{NC} [words] [--from O] [-f F]     Yours and your friends' (grouped by folder)
+       filters (list, find): --mine --shared --installed --created D --since D --created-before D
+       --updated D --updated-after D --updated-before D --sort name|created|updated -n N --fresh
+       (D: 2026-11-19, 2026-11, today, 7d, 2w, 3m)
   {GREEN}find{NC} <words> [--from O] [-f F]     Search: summary, version, owner, folder
   {GREEN}add{NC} <name[@ver]> [--from O]        Install (skills: [-g] [-a A]; agents: [--as N])
   {GREEN}log{NC} <name> [--from O]              Who made it, versions, what changed
