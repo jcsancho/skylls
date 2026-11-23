@@ -157,7 +157,12 @@ skylls push ./path/to/skill                 # or a folder path
   passwords, private keys and personal data (emails, phone numbers…) with
   [gitleaks](https://github.com/gitleaks/gitleaks), and publishes nothing if it
   finds any. Example values cut short or blanked out (`"sk-proj-abc…"`,
-  `xxxxxx`, `<your-key>`) are ignored. For other findings, push and sync (in a
+  `xxxxxx`, `<your-key>`) are ignored. If a local
+  [JEV](https://huggingface.co/autotrust/JEV-9B) decision server runs on this
+  machine (`http://127.0.0.1:8090`, or `SKYLLS_JEV_URL`; skylls starts and
+  stops `jev-server` when it is installed), it judges what's left, and findings
+  it is confident aren't real (docs examples, test keys) are ignored too; only
+  a local model is ever asked, and `SKYLLS_JEV=off` turns it off. For other findings, push and sync (in a
   terminal) ask whether they are false positives: answer yes and they are
   published and remembered (hashed, in `~/.config/skylls/allowed-secrets.json`),
   so you aren't asked about them again. `--skip-scan` skips the scan altogether.

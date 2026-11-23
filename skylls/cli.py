@@ -412,16 +412,17 @@ def expired_jwt(token: str) -> bool:
 
 
 def is_false_positive(finding: dict, lines: List[str]) -> bool:
-    """Matches that only look like secrets: digit runs inside decimals (SVG coordinates, timings) taken for
-    card numbers, card numbers that fail the Luhn check, expired sample JWTs, and private-key headers
+    """Matches that only look like secrets: digit runs inside decimals (SVG coordinates, timings, constants)
+    taken for card or phone numbers, card numbers that fail the Luhn check, expired sample JWTs, and private-key headers
     with no key under them (a paper quoting `openssl` output)."""
     rule, secret = finding.get("RuleID", ""), finding.get("Secret", "")
     start = max(int(finding.get("StartLine") or 1) - 1, 0)
     line = lines[start] if start < len(lines) else ""
+    in_number = bool(secret) and re.search(rf"[\d.]{re.escape(secret)}|{re.escape(secret)}\.?\d", line)
     if rule == "credit-card-number":
-        digits = re.sub(r"\D", "", secret)
-        in_number = re.search(rf"[\d.]{re.escape(secret)}|{re.escape(secret)}\.?\d", line)
-        return bool(in_number) or not luhn_ok(digits)
+        return bool(in_number) or not luhn_ok(re.sub(r"\D", "", secret))
+    if "phone" in rule:
+        return bool(in_number)
     if rule == "jwt":
         return expired_jwt(secret)
     if "private-key" in rule:
@@ -450,6 +451,115 @@ def file_lines(path: Path, cache: dict) -> List[str]:
 
 def redact(secret: str) -> str:
     return (secret[:4] + "…") if len(secret) > 6 else "…"
+
+
+# ── Local JEV decision model (optional) ────────────────────────────────────
+# A local JEV-9B server (Jev-compatible typed decisions, e.g. jev-mlx's `jev-server`) tells real secrets from
+# look-alikes. Only ever a server on this machine: findings hold the unredacted values, so they never go to a
+# hosted model. SKYLLS_JEV_URL changes the address; SKYLLS_JEV=off turns it off.
+JEV_URL = "http://127.0.0.1:8090"
+JEV_NOT_REAL = 0.25  # p(real secret) below this: ignored as a false positive (cautious: misses cost more)
+JEV_MIN_FREE_GB = 12
+
+
+def jev_url() -> Optional[str]:
+    if os.environ.get("SKYLLS_JEV", "").lower() in ("0", "off", "no", "false"):
+        return None
+    url = os.environ.get("SKYLLS_JEV_URL", JEV_URL).rstrip("/")
+    host = urllib.parse.urlparse(url).hostname or ""
+    return url if host in ("127.0.0.1", "localhost", "::1") else None  # never a hosted model
+
+
+def jev_up(url: str) -> bool:
+    try:
+        with urllib.request.urlopen(url + "/health", timeout=2) as r:
+            return r.status == 200
+    except (OSError, ValueError):
+        return False
+
+
+def free_memory_gb() -> Optional[float]:
+    """Free + reclaimable memory on macOS (vm_stat), None elsewhere or when unknown."""
+    if not shutil.which("vm_stat"):
+        return None
+    out = subprocess.run(["vm_stat"], capture_output=True, text=True).stdout
+    size = re.search(r"page size of (\d+)", out)
+    pages = sum(int(n) for k, n in re.findall(r"Pages (free|inactive|speculative|purgeable):\s+(\d+)", out))
+    return pages * int(size.group(1)) / 2**30 if size else None
+
+
+def jev_start(url: str) -> Optional[str]:
+    """Start the local JEV server (`jev-server start`) when it is installed and memory allows. Returns the
+    script to stop it with afterwards, or None when it couldn't be started."""
+    script = shutil.which("jev-server") or str(Path.home() / "bin" / "jev-server")
+    if url != JEV_URL or not Path(script).is_file():
+        return None
+    free = free_memory_gb()
+    if free is not None and free < JEV_MIN_FREE_GB:
+        info(f"Local JEV model not started: {free:.0f} GB free memory (needs {JEV_MIN_FREE_GB}).")
+        return None
+    info("Starting the local JEV model to check the findings …")
+    try:
+        subprocess.run([script, "start"], capture_output=True, text=True, timeout=150)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return script if jev_up(url) else None
+
+
+def jev_real(url: str, finding: dict, context: str) -> Optional[float]:
+    """Probability (0–1) that a gitleaks finding is a real secret or private info, per the local JEV model."""
+    state = {"finding": {"rule": finding.get("RuleID", ""), "file": Path(finding.get("File", "")).name,
+                         "value": (finding.get("Secret") or finding.get("Match") or "")[:200],
+                         "context": context[:800]}}
+    question = {"real": {"type": "noul", "instructions":
+                         "`finding` is a match from a secret scanner in files about to be published (`context` is the "
+                         "lines around it). Is `value` a "
+                         "real secret or real private data (a working API key, token, password, private key, or "
+                         "a real person's email, phone or card number), rather than a false positive (an example, "
+                         "placeholder, test or dummy value, documentation, a hash, an ID, a version, a public or "
+                         "generic address, a number or constant in code, random-looking data that is not a credential)?"}}
+    body = json.dumps({"state": state, "questions": question}).encode()
+    req = urllib.request.Request(url + "/api/alpha/decisions", data=body,
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return float(json.loads(r.read())["answers"]["real"]["noul"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def jev_context(finding: dict, lines: List[str], width: int = 200) -> str:
+    """The lines around a finding for the model. In minified code (lines longer than 300 characters) the
+    neighbours are noise and the match drowns in its own line: give `width` characters on each side of it."""
+    start = max(int(finding.get("StartLine") or 1) - 1, 0)
+    line = lines[start] if start < len(lines) else ""
+    if len(line) <= 300:
+        return "\n".join(lines[max(start - 3, 0):start + 2])
+    value = finding.get("Secret") or finding.get("Match") or ""
+    at = line.find(value) if value else -1
+    if at < 0:
+        at = max(int(finding.get("StartColumn") or 1) - 1, 0)
+    return "…" + line[max(at - width, 0):at + len(value) + width] + "…"
+
+
+def jev_filter(findings: List[dict], cache: dict) -> Tuple[List[dict], List[dict]]:
+    """(kept, ignored): findings the local JEV model is confident are false positives are ignored. Without a
+    local model (or when it fails) everything is kept."""
+    url = jev_url()
+    if not url or not findings:
+        return findings, []
+    started = None if jev_up(url) else jev_start(url)
+    if not started and not jev_up(url):
+        return findings, []
+    kept, ignored = [], []
+    try:
+        for f in findings:
+            p = jev_real(url, f, jev_context(f, file_lines(Path(f.get("File", "")), cache)))
+            (ignored if p is not None and p < JEV_NOT_REAL else kept).append(f)
+    finally:
+        if started:
+            subprocess.run([started, "stop"], capture_output=True)
+    return kept, ignored
 
 
 ALLOWED_SECRETS = Path.home() / ".config" / "skylls" / "allowed-secrets.json"  # findings you said are fine
@@ -502,13 +612,17 @@ def scan_secrets(folder: Path, ask: bool = False) -> None:
     allowed = load_allowed()
     known = [f for f in findings if finding_key(f) in allowed]
     findings = [f for f in findings if f not in known]
+    findings, judged = jev_filter(findings, cache)
     if examples:
         info(f"Ignored {len(examples)} example value(s) like \"sk-abc…\" (cut short or placeholders).")
     if lookalikes:
-        info(f"Ignored {len(lookalikes)} look-alike(s): decimals or non-Luhn digits taken for card numbers, "
+        info(f"Ignored {len(lookalikes)} look-alike(s): decimals or non-Luhn digits taken for card or phone numbers, "
              "expired sample JWTs, private-key headers with no key.")
     if known:
         info(f"Ignored {len(known)} you said are fine before (~/.config/skylls/allowed-secrets.json).")
+    if judged:
+        info(f"Ignored {len(judged)} the local JEV model judged false positives "
+             f"({', '.join(sorted({f.get('RuleID', '?') for f in judged}))}).")
     if not findings:
         ok("No secrets or private info found.")
         return

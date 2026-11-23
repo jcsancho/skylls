@@ -3,7 +3,7 @@
 # users alice (account), bob (friend), carol (organization carolco). Never touches real GitHub.
 
 D=$(cd "$(dirname "$0")" && pwd); T=$(mktemp -d); mkdir -p $T/fake $T/gh
-export GHROOT=$T/gh PYTHONPATH=$(dirname "$D")
+export GHROOT=$T/gh PYTHONPATH=$(dirname "$D") SKYLLS_JEV=off
 PYV=$(python3 -c "import skylls; print(skylls.__version__)")
 NPMV=$(python3 -c "import json; print(json.load(open('$(dirname "$D")/package.json'))['version'])")
 [ "$PYV" = "$NPMV" ] && echo "versions match: $PYV" || { echo "VERSION MISMATCH: __version__ $PYV, package.json $NPMV"; exit 1; }

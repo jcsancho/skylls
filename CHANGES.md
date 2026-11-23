@@ -3,6 +3,24 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.19.0 — 2026-11-23
+
+- **The secret scan asks a local JEV model about what's left.** After the
+  usual filters, skylls asks a local JEV decision server (Jev-compatible API
+  on `http://127.0.0.1:8090`, e.g. jev-mlx's `jev-server`) whether each
+  finding is a real secret, giving it the few lines around the match. Findings
+  it is confident are false positives (probability of being real below 0.25:
+  docs examples, test keys) are ignored and counted; everything else is still
+  refused or asked about. If the server isn't running and `jev-server` is
+  installed, skylls starts it (when 12 GB of memory are free) and stops it
+  afterwards. Only a server on this machine is ever used (the findings hold the
+  unredacted values); `SKYLLS_JEV_URL` changes the address, `SKYLLS_JEV=off`
+  turns it off. Without one, nothing changes.
+- In minified code (lines over 300 characters) the model sees 200 characters
+  on each side of the match instead of the surrounding lines.
+- Digit runs inside decimals or longer numbers are no longer taken for phone
+  numbers (as already for card numbers).
+
 ## 1.18.0 — 2026-11-19
 
 - **`list` and `find` are much faster** (75 s → ~5 s with 170 items): like
