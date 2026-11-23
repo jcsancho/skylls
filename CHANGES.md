@@ -3,6 +3,15 @@
 Every change to skylls raises its version (`skylls --version`):
 fix → 0.2.1, new feature → 0.3.0, breaking change → 1.0.0.
 
+## 1.20.0 — 2026-11-23
+
+- **The JEV model's answers are remembered.** Each finding (rule + value,
+  hashed; the value isn't stored) is asked about once and its answer kept in
+  `~/.cache/skylls/jev-verdicts.json`. Later scans reuse it: the model is only
+  started when there are new findings, and saved answers count even when it
+  can't start. The same value in several files is asked about once. The
+  cutoff is applied when reading, so changing it applies to old answers too.
+
 ## 1.19.0 — 2026-11-23
 
 - **The secret scan asks a local JEV model about what's left.** After the

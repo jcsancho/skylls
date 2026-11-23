@@ -462,8 +462,12 @@ JEV_NOT_REAL = 0.25  # p(real secret) below this: ignored as a false positive (c
 JEV_MIN_FREE_GB = 12
 
 
+def jev_off() -> bool:
+    return os.environ.get("SKYLLS_JEV", "").lower() in ("0", "off", "no", "false")
+
+
 def jev_url() -> Optional[str]:
-    if os.environ.get("SKYLLS_JEV", "").lower() in ("0", "off", "no", "false"):
+    if jev_off():
         return None
     url = os.environ.get("SKYLLS_JEV_URL", JEV_URL).rstrip("/")
     host = urllib.parse.urlparse(url).hostname or ""
@@ -542,23 +546,58 @@ def jev_context(finding: dict, lines: List[str], width: int = 200) -> str:
     return "…" + line[max(at - width, 0):at + len(value) + width] + "…"
 
 
+JEV_VERDICTS = Path.home() / ".cache" / "skylls" / "jev-verdicts.json"  # hashed finding → JEV's p(real)
+
+
+def load_jev_verdicts() -> dict:
+    try:
+        data = json.loads(JEV_VERDICTS.read_text())
+        return {k: float(v) for k, v in data.items()} if isinstance(data, dict) else {}
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def save_jev_verdicts(new: dict) -> None:
+    if not new:
+        return
+    try:
+        JEV_VERDICTS.parent.mkdir(parents=True, exist_ok=True)
+        JEV_VERDICTS.write_text(json.dumps({**load_jev_verdicts(), **new}, indent=0, sort_keys=True) + "\n")
+    except OSError:
+        pass
+
+
 def jev_filter(findings: List[dict], cache: dict) -> Tuple[List[dict], List[dict]]:
     """(kept, ignored): findings the local JEV model is confident are false positives are ignored. Without a
-    local model (or when it fails) everything is kept."""
+    local model (or when it fails) everything is kept. Its answers are remembered by finding (rule + value,
+    hashed, in ~/.cache/skylls/jev-verdicts.json), so a finding is asked about once and the model is only
+    started for new ones; the cutoff is applied when reading, so changing it applies to old answers too."""
+    if jev_off() or not findings:
+        return findings, []
     url = jev_url()
-    if not url or not findings:
-        return findings, []
-    started = None if jev_up(url) else jev_start(url)
-    if not started and not jev_up(url):
-        return findings, []
+    known = load_jev_verdicts()
+    probs = {id(f): known.get(finding_key(f)) for f in findings}
+    new_ones = [f for f in findings if probs[id(f)] is None]
+    if new_ones and url:
+        started = None if jev_up(url) else jev_start(url)
+        if started or jev_up(url):
+            answers = {}
+            try:
+                for f in new_ones:
+                    key = finding_key(f)
+                    if key not in answers:
+                        p = jev_real(url, f, jev_context(f, file_lines(Path(f.get("File", "")), cache)))
+                        if p is not None:
+                            answers[key] = round(p, 4)
+                    probs[id(f)] = answers.get(key)
+            finally:
+                if started:
+                    subprocess.run([started, "stop"], capture_output=True)
+            save_jev_verdicts(answers)
     kept, ignored = [], []
-    try:
-        for f in findings:
-            p = jev_real(url, f, jev_context(f, file_lines(Path(f.get("File", "")), cache)))
-            (ignored if p is not None and p < JEV_NOT_REAL else kept).append(f)
-    finally:
-        if started:
-            subprocess.run([started, "stop"], capture_output=True)
+    for f in findings:
+        p = probs[id(f)]
+        (ignored if p is not None and p < JEV_NOT_REAL else kept).append(f)
     return kept, ignored
 
 

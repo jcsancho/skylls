@@ -162,7 +162,9 @@ skylls push ./path/to/skill                 # or a folder path
   machine (`http://127.0.0.1:8090`, or `SKYLLS_JEV_URL`; skylls starts and
   stops `jev-server` when it is installed), it judges what's left, and findings
   it is confident aren't real (docs examples, test keys) are ignored too; only
-  a local model is ever asked, and `SKYLLS_JEV=off` turns it off. For other findings, push and sync (in a
+  a local model is ever asked, its answers are remembered (hashed, in
+  `~/.cache/skylls/jev-verdicts.json`) so a finding is only asked about once,
+  and `SKYLLS_JEV=off` turns it off. For other findings, push and sync (in a
   terminal) ask whether they are false positives: answer yes and they are
   published and remembered (hashed, in `~/.config/skylls/allowed-secrets.json`),
   so you aren't asked about them again. `--skip-scan` skips the scan altogether.
